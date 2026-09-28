@@ -1,0 +1,176 @@
+using System.Net;
+using Microsoft.Extensions.Logging;
+using Straapp.Application.Abstractions;
+using Straapp.Application.Strava;
+using Straapp.Application.Strava.Models;
+using StravaZone = Straapp.Application.Strava.Models.ActivityZone;
+
+namespace Straapp.Application.Sync;
+
+/// <summary>
+/// Copies one year of the athlete's activities from Strava into the database, with everything
+/// Strava has about each one. Activities already stored are skipped, so a sync that stopped
+/// (rate limit, restart) picks up where it left off when run again.
+/// </summary>
+public sealed class ActivitySyncService(
+    IStravaClient strava,
+    IActivityRepository activities,
+    IAthleteRepository athletes,
+    SyncStatus status,
+    TimeProvider time,
+    ILogger<ActivitySyncService> logger)
+{
+    /// <summary>Strava's largest page size.</summary>
+    private const int PageSize = 200;
+
+    public async Task SyncYearAsync(int year, bool force, CancellationToken ct = default)
+    {
+        status.Update(_ => new SyncProgress { State = SyncState.Running, Year = year, StartedAt = time.GetUtcNow() });
+        try
+        {
+            await RunAsync(year, force, ct);
+            status.Update(p => p with
+            {
+                State = SyncState.Completed,
+                Current = null,
+                Message = p.Errors.Count == 0 ? "Done." : $"Done, but {p.Errors.Count} activities failed; run again to retry them.",
+                FinishedAt = time.GetUtcNow(),
+            });
+        }
+        catch (Exception ex) when (ex is StravaApiException or OperationCanceledException)
+        {
+            var message = ex switch
+            {
+                StravaRateLimitException limit => $"{limit.Message} Run the sync again after {limit.RetryAfter:u}; stored activities are skipped.",
+                OperationCanceledException => "Stopped because the API shut down. Run it again to continue.",
+                _ => ex.Message,
+            };
+            logger.LogWarning(ex, "Sync of {Year} stopped: {Message}", year, message);
+            status.Update(p => p with { State = SyncState.Failed, Current = null, Message = message, FinishedAt = time.GetUtcNow() });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Sync of {Year} failed", year);
+            status.Update(p => p with { State = SyncState.Failed, Current = null, Message = ex.Message, FinishedAt = time.GetUtcNow() });
+        }
+    }
+
+    private async Task RunAsync(int year, bool force, CancellationToken ct)
+    {
+        var athlete = await strava.GetAthleteAsync(ct);
+        var zones = await OptionalAsync(() => strava.GetAthleteZonesAsync(ct));
+        await athletes.UpsertAthleteAsync(StravaMapper.ToAthlete(athlete, zones, time.GetUtcNow()), ct);
+
+        // Strava filters by UTC start; pad a day each side and cut on the local date,
+        // so a New Year's Eve run counts toward the year it was run in.
+        var yearStart = new DateTimeOffset(year, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        var from = yearStart.AddDays(-1);
+        var to = yearStart.AddYears(1).AddDays(1);
+
+        var summaries = new List<SummaryActivity>();
+        await foreach (var summary in strava.GetAllActivitiesAsync(before: to, after: from, ct))
+        {
+            if (summary.StartDateLocal.Year == year) summaries.Add(summary);
+        }
+
+        var stored = force ? new HashSet<long>() : await activities.GetIdsAsync(from, to, ct);
+        var todo = summaries.Where(s => !stored.Contains(s.Id)).OrderBy(s => s.StartDate).ToList();
+        status.Update(p => p with { Total = summaries.Count, Skipped = summaries.Count - todo.Count });
+        logger.LogInformation("Syncing {Todo} of {Total} activities from {Year}", todo.Count, summaries.Count, year);
+
+        // Activity zones need a Strava subscription; after the first refusal, stop asking.
+        var zonesAllowed = true;
+
+        foreach (var summary in todo)
+        {
+            status.Update(p => p with { Current = $"{summary.StartDateLocal:yyyy-MM-dd} {summary.Name} ({summary.Id})" });
+            try
+            {
+                var detail = await strava.GetActivityAsync(summary.Id, includeAllEfforts: true, ct);
+
+                // Manual activities have no streams: Strava answers 404.
+                var streams = await OptionalAsync(() => strava.GetActivityStreamsAsync(summary.Id, ct));
+
+                IReadOnlyList<StravaZone> activityZones = [];
+                if (zonesAllowed)
+                {
+                    try
+                    {
+                        activityZones = await strava.GetActivityZonesAsync(summary.Id, ct);
+                    }
+                    catch (StravaApiException ex) when (ex.StatusCode is HttpStatusCode.PaymentRequired or HttpStatusCode.Forbidden)
+                    {
+                        zonesAllowed = false;
+                        logger.LogInformation("Skipping activity zones: {Message}", ex.Message);
+                    }
+                }
+
+                var comments = detail.CommentCount > 0 ? await GetAllCommentsAsync(summary.Id, ct) : [];
+                var kudoers = detail.KudosCount > 0 ? await GetAllKudoersAsync(summary.Id, ct) : [];
+
+                var activity = StravaMapper.ToActivity(detail, streams, activityZones, comments, kudoers, time.GetUtcNow());
+                await activities.ReplaceAsync(activity, ct);
+                status.Update(p => p with { Synced = p.Synced + 1 });
+            }
+            catch (StravaApiException ex) when (ex is not (StravaRateLimitException or StravaNotAuthenticatedException))
+            {
+                // One broken activity shouldn't stop the rest; it's retried on the next run.
+                logger.LogWarning(ex, "Could not sync activity {ActivityId}", summary.Id);
+                status.Update(p => p with { Errors = [.. p.Errors, $"{summary.Id}: {ex.Message}"] });
+            }
+        }
+
+        await SyncGearAsync(athlete.Id, summaries, force, ct);
+    }
+
+    private async Task SyncGearAsync(long athleteId, IEnumerable<SummaryActivity> summaries, bool force, CancellationToken ct)
+    {
+        var used = summaries.Select(s => s.GearId).OfType<string>().Where(id => id.Length > 0).ToHashSet();
+        var stored = force ? new HashSet<string>() : await athletes.GetGearIdsAsync(ct);
+
+        foreach (var gearId in used.Where(id => !stored.Contains(id)))
+        {
+            status.Update(p => p with { Current = $"Gear {gearId}" });
+            var gear = await OptionalAsync(() => strava.GetGearAsync(gearId, ct));
+            if (gear is not null) await athletes.UpsertGearAsync(StravaMapper.ToGear(gear, athleteId, time.GetUtcNow()), ct);
+        }
+    }
+
+    private async Task<IReadOnlyList<Comment>> GetAllCommentsAsync(long activityId, CancellationToken ct)
+    {
+        var all = new List<Comment>();
+        string? cursor = null;
+        while (true)
+        {
+            var page = await strava.GetActivityCommentsAsync(activityId, PageSize, cursor, ct);
+            all.AddRange(page);
+            cursor = page.LastOrDefault()?.Cursor;
+            if (page.Count < PageSize || cursor is null) return all;
+        }
+    }
+
+    private async Task<IReadOnlyList<SummaryAthlete>> GetAllKudoersAsync(long activityId, CancellationToken ct)
+    {
+        var all = new List<SummaryAthlete>();
+        for (var page = 1; ; page++)
+        {
+            var batch = await strava.GetActivityKudoersAsync(activityId, new PageQuery(page, PageSize), ct);
+            all.AddRange(batch);
+            if (batch.Count < PageSize) return all;
+        }
+    }
+
+    /// <summary>Null when Strava has nothing (404) or won't share it with this athlete (402/403).</summary>
+    private async Task<T?> OptionalAsync<T>(Func<Task<T>> fetch) where T : class
+    {
+        try
+        {
+            return await fetch();
+        }
+        catch (StravaApiException ex) when (ex.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.PaymentRequired or HttpStatusCode.Forbidden)
+        {
+            logger.LogDebug("Skipped optional Strava data: {Message}", ex.Message);
+            return null;
+        }
+    }
+}
