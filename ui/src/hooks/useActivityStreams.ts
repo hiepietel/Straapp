@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { fetchActivityStreams } from "../services/stravaApi";
+import { fetchActivityStreams } from "../services/activitiesApi";
 import { getErrorMessage } from "../utils/errors";
 import type { ActivityStreams } from "../types/strava";
 

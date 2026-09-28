@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { fetchAthlete, fetchAthleteStats, fetchAthleteZones } from "../services/stravaApi";
+import { fetchProfile } from "../services/profileApi";
 import { getErrorMessage } from "../utils/errors";
 import type { Athlete, AthleteStats, AthleteZones } from "../types/strava";
 
@@ -12,6 +12,8 @@ export interface Section<T> {
 }
 
 const loading = <T,>(): Section<T> => ({ status: "loading", data: null, error: null });
+const ready = <T,>(data: T): Section<T> => ({ status: "ready", data, error: null });
+const failed = <T,>(error: string): Section<T> => ({ status: "error", data: null, error });
 
 export interface UseAthleteProfileResult {
   athlete: Section<Athlete>;
@@ -20,13 +22,13 @@ export interface UseAthleteProfileResult {
   retry: () => void;
 }
 
-// The three calls are independent, so one failing (most often `zones`, which needs a scope
-// the athlete may not have granted) doesn't block the sections that succeeded.
+// One request for the whole profile. Totals and zones can still be missing on their own (not synced
+// yet, or zones Strava won't share), so each section reports separately.
 export function useAthleteProfile(): UseAthleteProfileResult {
   const [athlete, setAthlete] = useState<Section<Athlete>>(loading);
   const [stats, setStats] = useState<Section<AthleteStats>>(loading);
   const [zones, setZones] = useState<Section<AthleteZones>>(loading);
-  // Bumped by retry() to re-run every effect.
+  // Bumped by retry() to re-run the effect.
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
@@ -35,27 +37,21 @@ export function useAthleteProfile(): UseAthleteProfileResult {
     setStats(loading());
     setZones(loading());
 
-    fetchAthlete()
-      .then((data) => {
+    fetchProfile()
+      .then((profile) => {
         if (!active) return;
-        setAthlete({ status: "ready", data, error: null });
-        return fetchAthleteStats()
-          .then((s) => active && setStats({ status: "ready", data: s, error: null }))
-          .catch((err: unknown) => {
-            if (active) setStats({ status: "error", data: null, error: getErrorMessage(err) });
-          });
+        setAthlete(ready(profile.athlete));
+        setStats(profile.stats ? ready(profile.stats) : failed("Your totals arrive with the next sync."));
+        setZones(
+          profile.zones ? ready(profile.zones) : failed("No training zones yet: they arrive with the next sync, if Strava shares them.")
+        );
       })
       .catch((err: unknown) => {
         if (!active) return;
         const message = getErrorMessage(err);
-        setAthlete({ status: "error", data: null, error: message });
-        setStats({ status: "error", data: null, error: "The athlete couldn't be loaded." });
-      });
-
-    fetchAthleteZones()
-      .then((data) => active && setZones({ status: "ready", data, error: null }))
-      .catch((err: unknown) => {
-        if (active) setZones({ status: "error", data: null, error: getErrorMessage(err) });
+        setAthlete(failed(message));
+        setStats(failed("The profile couldn't be loaded."));
+        setZones(failed("The profile couldn't be loaded."));
       });
 
     return () => {
