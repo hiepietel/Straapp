@@ -1,0 +1,73 @@
+# Every night at 03:00 (server time) a compressed pg_dump goes to its own volume; 14 days are kept.
+# Copy them off the server now and then: a backup on the same disk doesn't survive the disk.
+# Restoring is described in infra/README.md.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: straapp-backups
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: straapp-postgres-backup
+  labels:
+    app.kubernetes.io/name: straapp-postgres-backup
+spec:
+  schedule: "0 3 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: straapp-postgres-backup
+        spec:
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 70
+            runAsGroup: 70
+            fsGroup: 70
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: backup
+              image: postgres:18-alpine
+              command:
+                - sh
+                - -c
+                - |
+                  set -eu
+                  file="/backups/straapp-$(date +%Y-%m-%d_%H%M).sql.gz"
+                  pg_dump -h straapp-postgres -U "$PGUSER" -d straapp --no-owner | gzip > "$file.part"
+                  mv "$file.part" "$file"
+                  find /backups -name 'straapp-*.sql.gz' -mtime +14 -delete
+                  echo "Backed up to $file"; ls -lh /backups
+              env:
+                - name: PGUSER
+                  valueFrom:
+                    secretKeyRef: { name: straapp-postgres, key: username }
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef: { name: straapp-postgres, key: password }
+              volumeMounts:
+                - name: backups
+                  mountPath: /backups
+              resources:
+                requests: { cpu: 50m, memory: 64Mi }
+                limits: { memory: 256Mi }
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities: { drop: [ALL] }
+          volumes:
+            - name: backups
+              persistentVolumeClaim:
+                claimName: straapp-backups

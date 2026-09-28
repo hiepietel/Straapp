@@ -1,0 +1,28 @@
+# Everything Straapp needs in one namespace. Secrets are NOT here: they are created on the
+# server by infra/server/create-secrets.sh and never stored in git.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: straapp
+
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: straapp
+    includeSelectors: false
+
+resources:
+  - namespace.yaml
+  - postgres.yaml
+  - postgres-backup.yaml
+  - api.yaml
+  - ui.yaml
+  - ingress.yaml
+
+# The overlay pins these to the images CI just built.
+images:
+  - name: straapp-api
+    newName: ghcr.io/OWNER/straapp-api
+    newTag: latest
+  - name: straapp-ui
+    newName: ghcr.io/OWNER/straapp-ui
+    newTag: latest

@@ -1,0 +1,58 @@
+# The web app: static files served by nginx, which also forwards /api to the API.
+apiVersion: v1
+kind: Service
+metadata:
+  name: straapp-ui
+  labels:
+    app.kubernetes.io/name: straapp-ui
+spec:
+  selector:
+    app.kubernetes.io/name: straapp-ui
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: straapp-ui
+  labels:
+    app.kubernetes.io/name: straapp-ui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: straapp-ui
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: straapp-ui
+    spec:
+      imagePullSecrets:
+        - name: ghcr
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: ui
+          image: straapp-ui
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: API_UPSTREAM
+              value: http://straapp-api:8080
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 30
+          readinessProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 10m, memory: 16Mi }
+            limits: { memory: 64Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: [ALL] }

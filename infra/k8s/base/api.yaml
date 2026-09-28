@@ -1,0 +1,90 @@
+# The Straapp API. Exactly one replica, replaced rather than rolled: it holds the Strava session in
+# memory and runs the scheduled sync, and two copies would each run it.
+apiVersion: v1
+kind: Service
+metadata:
+  name: straapp-api
+  labels:
+    app.kubernetes.io/name: straapp-api
+spec:
+  selector:
+    app.kubernetes.io/name: straapp-api
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: straapp-api
+  labels:
+    app.kubernetes.io/name: straapp-api
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: straapp-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: straapp-api
+    spec:
+      # Only needed while the GitHub packages are private; see infra/README.md.
+      imagePullSecrets:
+        - name: ghcr
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: api
+          image: straapp-api
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: straapp-postgres, key: password }
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef: { name: straapp-postgres, key: username }
+            - name: ConnectionStrings__Straapp
+              # No Kerberos: the chiseled image has no GSSAPI library, and PostgreSQL here uses passwords.
+              value: Host=straapp-postgres;Database=straapp;Username=$(DB_USER);Password=$(DB_PASSWORD);GSS Encryption Mode=Disable
+            - name: Strava__ClientId
+              valueFrom:
+                secretKeyRef: { name: straapp-api, key: strava-client-id }
+            - name: Strava__ClientSecret
+              valueFrom:
+                secretKeyRef: { name: straapp-api, key: strava-client-secret }
+            - name: Auth__SigningKey
+              valueFrom:
+                secretKeyRef: { name: straapp-api, key: auth-signing-key }
+          startupProbe:
+            # Startup includes applying database migrations.
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 5
+            failureThreshold: 60
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 30
+          readinessProbe:
+            httpGet: { path: /readyz, port: http }
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { memory: 512Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}

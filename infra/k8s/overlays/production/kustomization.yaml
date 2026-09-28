@@ -1,0 +1,21 @@
+# Production: the base plus the real domain. The deploy workflow pins the images to the commit it
+# built (kustomize edit set image), renders this folder and applies it on the server.
+#
+# Before the first deploy, replace straapp.example.com below with your domain.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+patches:
+  - target:
+      kind: Ingress
+      name: straapp
+    patch: |-
+      - op: replace
+        path: /spec/tls/0/hosts/0
+        value: straapp.example.com
+      - op: replace
+        path: /spec/rules/0/host
+        value: straapp.example.com

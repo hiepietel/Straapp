@@ -1,0 +1,17 @@
+# Let's Encrypt for the whole cluster; applied once by infra/server/bootstrap.sh after cert-manager is
+# installed. Certificates are proven over plain http (HTTP-01), so ports 80 and 443 must reach the server.
+# The email gets expiry warnings; bootstrap.sh fills it in.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: ${LETSENCRYPT_EMAIL}
+    privateKeySecretRef:
+      name: letsencrypt-account-key
+    solvers:
+      - http01:
+          ingress:
+            ingressClassName: traefik

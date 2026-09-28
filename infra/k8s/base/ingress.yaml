@@ -1,0 +1,35 @@
+# HTTPS on the app's domain, through k3s' built-in Traefik, with a Let's Encrypt certificate from
+# cert-manager. The overlay sets the real domain.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: straapp
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+    # Plain http is redirected to https (see middleware below).
+    traefik.ingress.kubernetes.io/router.middlewares: straapp-redirect-https@kubernetescrd
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts: [straapp.example.com]
+      secretName: straapp-tls
+  rules:
+    - host: straapp.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: straapp-ui
+                port:
+                  name: http
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: redirect-https
+spec:
+  redirectScheme:
+    scheme: https
+    permanent: true
