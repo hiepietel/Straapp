@@ -4,7 +4,8 @@ using Straapp.Application.Sync;
 
 namespace Straapp.Api.Sync;
 
-public sealed record SyncRequest(int Year, bool Force);
+/// <param name="Year">Null syncs the whole history.</param>
+public sealed record SyncRequest(int? Year, bool Force);
 
 /// <summary>Hands sync requests to <see cref="SyncWorker"/>. Holds at most one, and none while a sync runs.</summary>
 public sealed class SyncQueue(SyncStatus status, TimeProvider time)
@@ -39,15 +40,16 @@ public sealed class SyncWorker(SyncQueue queue, IServiceScopeFactory scopes) : B
         {
             await using var scope = scopes.CreateAsyncScope();
             var sync = scope.ServiceProvider.GetRequiredService<ActivitySyncService>();
-            await sync.SyncYearAsync(request.Year, request.Force, stoppingToken);
+            await sync.SyncAsync(request.Year, request.Force, stoppingToken);
         }
     }
 }
 
 /// <summary>
-/// The only thing that fetches new activities on its own: every <c>Sync:IntervalHours</c> (default 6),
-/// and soon after a login, it syncs the current year. Stored activities are skipped, so a run with
-/// nothing new costs only a handful of Strava requests. Pages never ask Strava themselves.
+/// The only thing that fetches activities on its own: every <c>Sync:IntervalHours</c> (default 6),
+/// and soon after a login, it syncs the whole history, newest first. Stored activities are skipped,
+/// so once everything is in, a run costs only a few Strava requests (one per 200 activities to list
+/// them, plus one per gear item). Pages never ask Strava themselves.
 /// </summary>
 public sealed class ScheduledSyncWorker(
     SyncQueue queue,
@@ -71,11 +73,10 @@ public sealed class ScheduledSyncWorker(
             if (!auth.IsSignedIn) continue;
             if (lastRun is { } last && time.GetUtcNow() - last < interval) continue;
 
-            var year = time.GetLocalNow().Year;
-            if (queue.TryStart(new SyncRequest(year, Force: false)))
+            if (queue.TryStart(new SyncRequest(Year: null, Force: false)))
             {
                 lastRun = time.GetUtcNow();
-                logger.LogInformation("Scheduled sync of {Year} started; next one in {Interval}", year, interval);
+                logger.LogInformation("Scheduled sync of the whole history started; next one in {Interval}", interval);
             }
         }
     }

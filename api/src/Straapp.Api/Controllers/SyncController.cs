@@ -15,24 +15,35 @@ public sealed class SyncController(
     : ControllerBase
 {
     /// <summary>
-    /// Starts syncing every activity from <paramref name="year"/> in the background. Activities already stored
-    /// are skipped unless <paramref name="force"/> is set. Follow progress at GET /api/sync/status.
+    /// Starts syncing the whole history in the background, newest first (the scheduled job does the same
+    /// every few hours). Activities already stored are skipped unless <paramref name="force"/> is set.
+    /// Follow progress at GET /api/sync/status.
     /// </summary>
+    [HttpPost]
+    [ProducesResponseType<SyncProgress>(StatusCodes.Status202Accepted)]
+    public IActionResult StartAll(bool force = false) => Start(new SyncRequest(Year: null, force));
+
+    /// <summary>Like POST /api/sync, for the activities of one <paramref name="year"/> only.</summary>
     [HttpPost("{year:int}")]
     [ProducesResponseType<SyncProgress>(StatusCodes.Status202Accepted)]
-    public IActionResult Start(int year, bool force = false)
+    public IActionResult StartYear(int year, bool force = false)
     {
         if (year < 2009 || year > time.GetUtcNow().Year)
         {
             return Problem($"Pick a year between 2009 (Strava's start) and {time.GetUtcNow().Year}.",
                 statusCode: StatusCodes.Status400BadRequest);
         }
+        return Start(new SyncRequest(year, force));
+    }
+
+    private IActionResult Start(SyncRequest request)
+    {
         if (!auth.IsSignedIn)
         {
             return Problem("You are not logged in to Strava. Open /api/auth/login first.",
                 statusCode: StatusCodes.Status401Unauthorized);
         }
-        if (!queue.TryStart(new SyncRequest(year, force)))
+        if (!queue.TryStart(request))
         {
             return Problem("A sync is already running. Check GET /api/sync/status.", statusCode: StatusCodes.Status409Conflict);
         }

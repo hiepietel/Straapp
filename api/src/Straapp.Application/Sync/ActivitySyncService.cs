@@ -8,9 +8,10 @@ using StravaZone = Straapp.Application.Strava.Models.ActivityZone;
 namespace Straapp.Application.Sync;
 
 /// <summary>
-/// Copies one year of the athlete's activities from Strava into the database, with everything
-/// Strava has about each one. Activities already stored are skipped, so a sync that stopped
-/// (rate limit, restart) picks up where it left off when run again.
+/// Copies the athlete's activities from Strava into the database, with everything Strava has about
+/// each one: the whole history, or one year. Newest first, so recent activities are there soonest.
+/// Activities already stored are skipped, so a sync that stopped (rate limit, restart) picks up where
+/// it left off, working further back, when run again.
 /// </summary>
 public sealed class ActivitySyncService(
     IStravaClient strava,
@@ -23,8 +24,11 @@ public sealed class ActivitySyncService(
     /// <summary>Strava's largest page size.</summary>
     private const int PageSize = 200;
 
-    public async Task SyncYearAsync(int year, bool force, CancellationToken ct = default)
+    /// <param name="year">Null syncs the whole history.</param>
+    /// <param name="force">Fetch stored activities again too.</param>
+    public async Task SyncAsync(int? year, bool force, CancellationToken ct = default)
     {
+        var scope = year?.ToString() ?? "the whole history";
         status.Update(_ => new SyncProgress { State = SyncState.Running, Year = year, StartedAt = time.GetUtcNow() });
         try
         {
@@ -45,38 +49,49 @@ public sealed class ActivitySyncService(
                 OperationCanceledException => "Stopped because the API shut down. Run it again to continue.",
                 _ => ex.Message,
             };
-            logger.LogWarning(ex, "Sync of {Year} stopped: {Message}", year, message);
+            logger.LogWarning(ex, "Sync of {Scope} stopped: {Message}", scope, message);
             status.Update(p => p with { State = SyncState.Failed, Current = null, Message = message, FinishedAt = time.GetUtcNow() });
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Sync of {Year} failed", year);
+            logger.LogError(ex, "Sync of {Scope} failed", scope);
             status.Update(p => p with { State = SyncState.Failed, Current = null, Message = ex.Message, FinishedAt = time.GetUtcNow() });
         }
     }
 
-    private async Task RunAsync(int year, bool force, CancellationToken ct)
+    private async Task RunAsync(int? year, bool force, CancellationToken ct)
     {
         var athlete = await strava.GetAthleteAsync(ct);
         var zones = await OptionalAsync(() => strava.GetAthleteZonesAsync(ct));
         await athletes.UpsertAthleteAsync(StravaMapper.ToAthlete(athlete, zones, time.GetUtcNow()), ct);
 
-        // Strava filters by UTC start; pad a day each side and cut on the local date,
+        // Strava filters by UTC start; for one year, pad a day each side and cut on the local date,
         // so a New Year's Eve run counts toward the year it was run in.
-        var yearStart = new DateTimeOffset(year, 1, 1, 0, 0, 0, TimeSpan.Zero);
-        var from = yearStart.AddDays(-1);
-        var to = yearStart.AddYears(1).AddDays(1);
+        DateTimeOffset? from = null, to = null;
+        if (year is { } y)
+        {
+            var yearStart = new DateTimeOffset(y, 1, 1, 0, 0, 0, TimeSpan.Zero);
+            from = yearStart.AddDays(-1);
+            to = yearStart.AddYears(1).AddDays(1);
+        }
 
+        // Listing is cheap (one request per 200 activities) and tells us what's missing.
         var summaries = new List<SummaryActivity>();
         await foreach (var summary in strava.GetAllActivitiesAsync(before: to, after: from, ct))
         {
-            if (summary.StartDateLocal.Year == year) summaries.Add(summary);
+            if (year is null || summary.StartDateLocal.Year == year) summaries.Add(summary);
         }
 
-        var stored = force ? new HashSet<long>() : await activities.GetIdsAsync(from, to, ct);
-        var todo = summaries.Where(s => !stored.Contains(s.Id)).OrderBy(s => s.StartDate).ToList();
+        // First, while it's only a few requests: the gear page shouldn't wait for hundreds of activities.
+        await SyncGearAsync(athlete, summaries, ct);
+
+        var stored = force
+            ? new HashSet<long>()
+            : await activities.GetIdsAsync(from ?? DateTimeOffset.UnixEpoch, to ?? time.GetUtcNow().AddDays(1), ct);
+        var todo = summaries.Where(s => !stored.Contains(s.Id)).OrderByDescending(s => s.StartDate).ToList();
         status.Update(p => p with { Total = summaries.Count, Skipped = summaries.Count - todo.Count });
-        logger.LogInformation("Syncing {Todo} of {Total} activities from {Year}", todo.Count, summaries.Count, year);
+        logger.LogInformation("Syncing {Todo} of {Total} activities ({Scope}), newest first",
+            todo.Count, summaries.Count, year?.ToString() ?? "whole history");
 
         // Activity zones need a Strava subscription; after the first refusal, stop asking.
         var zonesAllowed = true;
@@ -120,19 +135,26 @@ public sealed class ActivitySyncService(
             }
         }
 
-        await SyncGearAsync(athlete.Id, summaries, force, ct);
     }
 
-    private async Task SyncGearAsync(long athleteId, IEnumerable<SummaryActivity> summaries, bool force, CancellationToken ct)
+    /// <summary>
+    /// Refreshes every bike and pair of shoes: those on the athlete's profile and those the year's
+    /// activities used (retired gear is only found that way). Always re-fetched, one request each,
+    /// so names, lifetime distances and retired flags stay current.
+    /// </summary>
+    private async Task SyncGearAsync(DetailedAthlete athlete, IEnumerable<SummaryActivity> summaries, CancellationToken ct)
     {
-        var used = summaries.Select(s => s.GearId).OfType<string>().Where(id => id.Length > 0).ToHashSet();
-        var stored = force ? new HashSet<string>() : await athletes.GetGearIdsAsync(ct);
+        var ids = summaries.Select(s => s.GearId)
+            .Concat((athlete.Bikes ?? []).Concat(athlete.Shoes ?? []).Select(g => g.Id))
+            .OfType<string>()
+            .Where(id => id.Length > 0)
+            .ToHashSet();
 
-        foreach (var gearId in used.Where(id => !stored.Contains(id)))
+        foreach (var gearId in ids)
         {
             status.Update(p => p with { Current = $"Gear {gearId}" });
             var gear = await OptionalAsync(() => strava.GetGearAsync(gearId, ct));
-            if (gear is not null) await athletes.UpsertGearAsync(StravaMapper.ToGear(gear, athleteId, time.GetUtcNow()), ct);
+            if (gear is not null) await athletes.UpsertGearAsync(StravaMapper.ToGear(gear, athlete.Id, time.GetUtcNow()), ct);
         }
     }
 
