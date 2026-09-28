@@ -16,7 +16,16 @@ public interface IActivityRepository
     /// [<paramref name="from"/>, <paramref name="to"/>). Summed by the database, so no activity is loaded.
     /// </summary>
     Task<IReadOnlyList<DailyTotals>> GetDailyTotalsAsync(long athleteId, DateOnly from, DateOnly to, CancellationToken ct = default);
+
+    /// <summary>Every stored activity of the athlete, just the columns gear statistics need; oldest first.</summary>
+    Task<IReadOnlyList<ActivityUsage>> GetUsageAsync(long athleteId, CancellationToken ct = default);
 }
+
+/// <summary>One activity, reduced to what usage statistics need.</summary>
+/// <param name="Date">The local calendar day it started on.</param>
+public sealed record ActivityUsage(
+    long Id, string Name, string? GearId, string? SportType, string? Type, DateOnly Date,
+    double Distance, int MovingTime, double Elevation);
 
 /// <summary>One day's activities of one sport type, summed.</summary>
 public sealed record DailyTotals(
@@ -28,7 +37,8 @@ public interface IAthleteRepository
 
     Task UpsertAthleteAsync(Athlete athlete, CancellationToken ct = default);
 
-    Task<IReadOnlySet<string>> GetGearIdsAsync(CancellationToken ct = default);
+    /// <summary>The athlete's bikes and shoes as last synced.</summary>
+    Task<IReadOnlyList<Gear>> GetGearAsync(long athleteId, CancellationToken ct = default);
 
     Task UpsertGearAsync(Gear gear, CancellationToken ct = default);
 }

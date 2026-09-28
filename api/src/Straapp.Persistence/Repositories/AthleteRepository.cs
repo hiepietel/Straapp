@@ -12,11 +12,8 @@ internal sealed class AthleteRepository(StraappDbContext db) : IAthleteRepositor
     public Task UpsertAthleteAsync(Athlete athlete, CancellationToken ct = default) =>
         UpsertAsync(db.Athletes, athlete, athlete.Id, ct);
 
-    public async Task<IReadOnlySet<string>> GetGearIdsAsync(CancellationToken ct = default)
-    {
-        var ids = await db.Gear.Select(g => g.Id).ToListAsync(ct);
-        return ids.ToHashSet();
-    }
+    public async Task<IReadOnlyList<Gear>> GetGearAsync(long athleteId, CancellationToken ct = default) =>
+        await db.Gear.AsNoTracking().Where(g => g.AthleteId == athleteId).ToListAsync(ct);
 
     public Task UpsertGearAsync(Gear gear, CancellationToken ct = default) =>
         UpsertAsync(db.Gear, gear, gear.Id, ct);

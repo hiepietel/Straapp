@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Straapp.Application.Accounts;
+using Straapp.Application.GearStats;
 using Straapp.Application.Statistics;
 using Straapp.Application.Sync;
 
@@ -11,6 +12,7 @@ public static class DependencyInjection
     {
         services.AddScoped<LoginService>();
         services.AddScoped<StatisticsService>();
+        services.AddScoped<GearService>();
 
         services.AddSingleton<SyncStatus>();
         services.AddScoped<ActivitySyncService>();

@@ -42,6 +42,25 @@ internal sealed class ActivityRepository(StraappDbContext db) : IActivityReposit
             .ToList();
     }
 
+    public async Task<IReadOnlyList<ActivityUsage>> GetUsageAsync(long athleteId, CancellationToken ct = default)
+    {
+        var rows = await db.Activities
+            .Where(a => a.AthleteId == athleteId)
+            .OrderBy(a => a.StartDateLocal)
+            .Select(a => new
+            {
+                a.Id, a.Name, a.GearId, a.SportType, a.Type, a.StartDateLocal,
+                a.Distance, a.MovingTime, a.TotalElevationGain,
+            })
+            .ToListAsync(ct);
+
+        return rows
+            .Select(r => new ActivityUsage(
+                r.Id, r.Name, r.GearId, r.SportType, r.Type, DateOnly.FromDateTime(r.StartDateLocal),
+                r.Distance, r.MovingTime, r.TotalElevationGain))
+            .ToList();
+    }
+
     public async Task ReplaceAsync(Activity activity, CancellationToken ct = default)
     {
         try
