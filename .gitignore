@@ -1,0 +1,9 @@
+# Each app has its own ignore file too: api/.gitignore (.NET) and ui/.gitignore (Node).
+
+# Editors and OS
+.vs/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
