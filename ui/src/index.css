@@ -1,0 +1,37 @@
+@import "tailwindcss";
+
+/* Design tokens: pavement, asphalt and road paint */
+@theme {
+  --font-sans: "Archivo", ui-sans-serif, system-ui, sans-serif;
+
+  --color-pavement: #e8eaeb;
+  --color-chalk: #f7f8f8;
+  --color-asphalt: #1b2125;
+  --color-ink: #1b2125;
+  --color-mute: #5c676e;
+  --color-line: #d3d8da;
+  --color-paint: #f4c430;
+  --color-focus: #2e6dA4;
+  --color-alert: #a3321f;
+}
+
+/* Condensed, tabular numerals for stats */
+@utility num {
+  font-stretch: 78%;
+  font-variant-numeric: tabular-nums;
+}
+
+@layer base {
+  body {
+    @apply bg-pavement text-ink font-sans antialiased;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+  /* Browsers don't default <button> to a pointer cursor the way they do <a> — every
+     clickable button in the app should still look clickable on hover. */
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+}
