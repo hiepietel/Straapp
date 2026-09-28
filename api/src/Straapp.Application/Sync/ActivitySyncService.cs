@@ -63,7 +63,13 @@ public sealed class ActivitySyncService(
     {
         var athlete = await strava.GetAthleteAsync(ct);
         var zones = await OptionalAsync(() => strava.GetAthleteZonesAsync(ct));
-        await athletes.UpsertAthleteAsync(StravaMapper.ToAthlete(athlete, zones, time.GetUtcNow()), ct);
+        var stats = await OptionalAsync(() => strava.GetAthleteStatsAsync(ct));
+        var profile = StravaMapper.ToAthlete(athlete, zones, time.GetUtcNow(), stats);
+        // Zones and totals are optional on Strava's side; keep what an earlier sync got rather than wiping it.
+        var storedAthlete = await athletes.GetAthleteAsync(athlete.Id, ct);
+        profile.ZonesJson ??= storedAthlete?.ZonesJson;
+        profile.StatsJson ??= storedAthlete?.StatsJson;
+        await athletes.UpsertAthleteAsync(profile, ct);
 
         // Strava filters by UTC start; for one year, pad a day each side and cut on the local date,
         // so a New Year's Eve run counts toward the year it was run in.

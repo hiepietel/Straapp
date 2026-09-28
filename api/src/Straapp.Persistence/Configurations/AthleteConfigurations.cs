@@ -12,6 +12,7 @@ internal sealed class AthleteConfiguration : IEntityTypeConfiguration<Athlete>
         builder.Property(a => a.Id).ValueGeneratedNever();
         builder.Property(a => a.RawJson).HasColumnType("jsonb");
         builder.Property(a => a.ZonesJson).HasColumnType("jsonb");
+        builder.Property(a => a.StatsJson).HasColumnType("jsonb");
     }
 }
 

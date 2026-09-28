@@ -42,6 +42,47 @@ internal sealed class ActivityRepository(StraappDbContext db) : IActivityReposit
             .ToList();
     }
 
+    public async Task<IReadOnlyList<Activity>> GetPageAsync(long athleteId, int skip, int take, CancellationToken ct = default) =>
+        await db.Activities
+            .AsNoTracking()
+            .Where(a => a.AthleteId == athleteId)
+            .OrderByDescending(a => a.StartDate)
+            .ThenByDescending(a => a.Id)
+            .Skip(skip)
+            .Take(take)
+            // Everything but the raw payload, which can be hundreds of kilobytes per activity.
+            .Select(a => new Activity
+            {
+                Id = a.Id, AthleteId = a.AthleteId, Name = a.Name, Description = a.Description,
+                SportType = a.SportType, Type = a.Type, WorkoutType = a.WorkoutType,
+                StartDate = a.StartDate, StartDateLocal = a.StartDateLocal, Timezone = a.Timezone, UtcOffset = a.UtcOffset,
+                Distance = a.Distance, MovingTime = a.MovingTime, ElapsedTime = a.ElapsedTime,
+                TotalElevationGain = a.TotalElevationGain, ElevHigh = a.ElevHigh, ElevLow = a.ElevLow,
+                AverageSpeed = a.AverageSpeed, MaxSpeed = a.MaxSpeed,
+                AverageHeartrate = a.AverageHeartrate, MaxHeartrate = a.MaxHeartrate, AverageCadence = a.AverageCadence,
+                AverageWatts = a.AverageWatts, WeightedAverageWatts = a.WeightedAverageWatts, MaxWatts = a.MaxWatts,
+                DeviceWatts = a.DeviceWatts, Kilojoules = a.Kilojoules, Calories = a.Calories,
+                AverageTemp = a.AverageTemp, SufferScore = a.SufferScore,
+                StartLatitude = a.StartLatitude, StartLongitude = a.StartLongitude,
+                EndLatitude = a.EndLatitude, EndLongitude = a.EndLongitude, LocationCountry = a.LocationCountry,
+                SummaryPolyline = a.SummaryPolyline,
+                KudosCount = a.KudosCount, CommentCount = a.CommentCount, AchievementCount = a.AchievementCount,
+                PrCount = a.PrCount, AthleteCount = a.AthleteCount, PhotoCount = a.PhotoCount,
+                Trainer = a.Trainer, Commute = a.Commute, Manual = a.Manual, Private = a.Private,
+                Visibility = a.Visibility, GearId = a.GearId, DeviceName = a.DeviceName,
+                SyncedAt = a.SyncedAt,
+            })
+            .ToListAsync(ct);
+
+    public Task<Activity?> GetAsync(long athleteId, long activityId, CancellationToken ct = default) =>
+        db.Activities.AsNoTracking().FirstOrDefaultAsync(a => a.Id == activityId && a.AthleteId == athleteId, ct);
+
+    public Task<ActivityStreams?> GetStreamsAsync(long athleteId, long activityId, CancellationToken ct = default) =>
+        db.ActivityStreams
+            .AsNoTracking()
+            .Where(s => s.ActivityId == activityId && db.Activities.Any(a => a.Id == activityId && a.AthleteId == athleteId))
+            .FirstOrDefaultAsync(ct);
+
     public async Task<IReadOnlyList<ActivityUsage>> GetUsageAsync(long athleteId, CancellationToken ct = default)
     {
         var rows = await db.Activities

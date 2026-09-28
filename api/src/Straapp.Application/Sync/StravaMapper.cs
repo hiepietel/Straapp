@@ -143,7 +143,7 @@ public static class StravaMapper
         return activity;
     }
 
-    public static Athlete ToAthlete(DetailedAthlete athlete, AthleteZones? zones, DateTimeOffset syncedAt) => new()
+    public static Athlete ToAthlete(DetailedAthlete athlete, AthleteZones? zones, DateTimeOffset syncedAt, ActivityStats? stats = null) => new()
     {
         Id = athlete.Id,
         Username = athlete.Username,
@@ -160,6 +160,7 @@ public static class StravaMapper
         CreatedAt = athlete.CreatedAt?.ToUniversalTime(),
         RawJson = StravaJson.Serialize(athlete),
         ZonesJson = zones is null ? null : StravaJson.Serialize(zones),
+        StatsJson = stats is null ? null : StravaJson.Serialize(stats),
         SyncedAt = syncedAt,
     };
 
