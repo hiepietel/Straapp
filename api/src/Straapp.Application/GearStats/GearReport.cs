@@ -3,9 +3,6 @@ using Straapp.Domain.Athletes;
 
 namespace Straapp.Application.GearStats;
 
-/// <summary>An activity worth pointing at, such as a bike's longest ride.</summary>
-public sealed record ActivityRef(long Id, string Name, DateOnly Date, double Distance, int MovingTime, double Elevation);
-
 /// <summary>How much one sport type used a piece of gear.</summary>
 public sealed record SportUsage(string SportType, Totals Totals);
 

@@ -92,13 +92,14 @@ internal sealed class ActivityRepository(StraappDbContext db) : IActivityReposit
             {
                 a.Id, a.Name, a.GearId, a.SportType, a.Type, a.StartDateLocal,
                 a.Distance, a.MovingTime, a.TotalElevationGain,
+                Private = a.Private || a.Visibility == "only_me",
             })
             .ToListAsync(ct);
 
         return rows
             .Select(r => new ActivityUsage(
                 r.Id, r.Name, r.GearId, r.SportType, r.Type, DateOnly.FromDateTime(r.StartDateLocal),
-                r.Distance, r.MovingTime, r.TotalElevationGain))
+                r.Distance, r.MovingTime, r.TotalElevationGain, r.Private))
             .ToList();
     }
 

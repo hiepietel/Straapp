@@ -11,6 +11,9 @@ public sealed record Totals(int Count, double Distance, long MovingTime, double 
         new(a.Count + b.Count, a.Distance + b.Distance, a.MovingTime + b.MovingTime, a.Elevation + b.Elevation);
 }
 
+/// <summary>An activity worth pointing at, such as the longest ride.</summary>
+public sealed record ActivityRef(long Id, string Name, DateOnly Date, double Distance, int MovingTime, double Elevation);
+
 public enum ComparisonPeriod
 {
     Week,
