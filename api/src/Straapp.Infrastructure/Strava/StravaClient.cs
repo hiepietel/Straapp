@@ -3,7 +3,6 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using Straapp.Application.Strava;
 using Straapp.Application.Strava.Models;
 
@@ -29,20 +28,10 @@ internal sealed class StravaClient(HttpClient http, IStravaAuthService auth) : I
     public Task<ActivityStats> GetAthleteStatsAsync(CancellationToken ct = default) =>
         GetAsync<ActivityStats>($"athletes/{auth.GetAthleteId()}/stats", ct);
 
-    public Task<IReadOnlyList<SummaryClub>> GetAthleteClubsAsync(PageQuery page, CancellationToken ct = default) =>
-        GetListAsync<SummaryClub>(Paged("athlete/clubs", page), ct);
-
     public Task<DetailedGear> GetGearAsync(string gearId, CancellationToken ct = default) =>
         GetAsync<DetailedGear>($"gear/{Uri.EscapeDataString(gearId)}", ct);
 
     // ---- activities ----
-
-    public Task<IReadOnlyList<SummaryActivity>> GetActivitiesAsync(ActivityQuery query, CancellationToken ct = default) =>
-        GetListAsync<SummaryActivity>(QueryString.Append("athlete/activities",
-            ("before", query.Before),
-            ("after", query.After),
-            ("page", query.Page),
-            ("per_page", query.PerPage)), ct);
 
     public async IAsyncEnumerable<SummaryActivity> GetAllActivitiesAsync(
         DateTimeOffset? before = null, DateTimeOffset? after = null,
@@ -50,7 +39,11 @@ internal sealed class StravaClient(HttpClient http, IStravaAuthService auth) : I
     {
         for (var page = 1; ; page++)
         {
-            var batch = await GetActivitiesAsync(new ActivityQuery(before, after, page, MaxPerPage), ct);
+            var batch = await GetListAsync<SummaryActivity>(QueryString.Append("athlete/activities",
+                ("before", before),
+                ("after", after),
+                ("page", page),
+                ("per_page", MaxPerPage)), ct);
             foreach (var activity in batch) yield return activity;
 
             // A short page is the last one; saves the extra empty request.
@@ -63,12 +56,10 @@ internal sealed class StravaClient(HttpClient http, IStravaAuthService auth) : I
             ("include_all_efforts", includeAllEfforts)), ct);
 
     public Task<StreamSet> GetActivityStreamsAsync(long activityId, CancellationToken ct = default) =>
-        GetStreamsAsync(QueryString.Append($"activities/{activityId}/streams",
+        // key_by_type: {"altitude": {...}, ...}, which is exactly a StreamSet.
+        GetAsync<StreamSet>(QueryString.Append($"activities/{activityId}/streams",
             ("keys", StreamKeys),
             ("key_by_type", true)), ct);
-
-    public Task<IReadOnlyList<Lap>> GetActivityLapsAsync(long activityId, CancellationToken ct = default) =>
-        GetListAsync<Lap>($"activities/{activityId}/laps", ct);
 
     public Task<IReadOnlyList<ActivityZone>> GetActivityZonesAsync(long activityId, CancellationToken ct = default) =>
         GetListAsync<ActivityZone>($"activities/{activityId}/zones", ct);
@@ -81,35 +72,6 @@ internal sealed class StravaClient(HttpClient http, IStravaAuthService auth) : I
 
     public Task<IReadOnlyList<SummaryAthlete>> GetActivityKudoersAsync(long activityId, PageQuery page, CancellationToken ct = default) =>
         GetListAsync<SummaryAthlete>(Paged($"activities/{activityId}/kudos", page), ct);
-
-    // ---- routes ----
-
-    public Task<IReadOnlyList<StravaRoute>> GetRoutesAsync(PageQuery page, CancellationToken ct = default) =>
-        GetListAsync<StravaRoute>(Paged($"athletes/{auth.GetAthleteId()}/routes", page), ct);
-
-    public Task<StravaRoute> GetRouteAsync(long routeId, CancellationToken ct = default) =>
-        GetAsync<StravaRoute>($"routes/{routeId}", ct);
-
-    public Task<StreamSet> GetRouteStreamsAsync(long routeId, CancellationToken ct = default) =>
-        GetStreamsAsync($"routes/{routeId}/streams", ct);
-
-    // ---- segments ----
-
-    public Task<IReadOnlyList<SummarySegment>> GetStarredSegmentsAsync(PageQuery page, CancellationToken ct = default) =>
-        GetListAsync<SummarySegment>(Paged("segments/starred", page), ct);
-
-    public Task<DetailedSegment> GetSegmentAsync(long segmentId, CancellationToken ct = default) =>
-        GetAsync<DetailedSegment>($"segments/{segmentId}", ct);
-
-    public Task<IReadOnlyList<SegmentEffort>> GetSegmentEffortsAsync(
-        long segmentId, DateTimeOffset? start = null, DateTimeOffset? end = null, int perPage = 30,
-        CancellationToken ct = default) =>
-        GetListAsync<SegmentEffort>(QueryString.Append("segment_efforts",
-            ("segment_id", segmentId),
-            // This endpoint wants ISO dates rather than the epoch seconds used elsewhere.
-            ("start_date_local", start?.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture)),
-            ("end_date_local", end?.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture)),
-            ("per_page", perPage)), ct);
 
     // ---- plumbing ----
 
@@ -127,32 +89,6 @@ internal sealed class StravaClient(HttpClient http, IStravaAuthService auth) : I
         {
             return await response.Content.ReadFromJsonAsync<T>(StravaJson.Options, ct)
                 ?? throw new StravaApiException(HttpStatusCode.BadGateway, $"Strava sent an empty response for {path}.");
-        }
-        catch (JsonException ex)
-        {
-            throw UnreadableResponse(path, ex);
-        }
-    }
-
-    /// <summary>
-    /// Activity streams come keyed by type ({"altitude": {...}}), route streams as an array
-    /// ([{"type": "altitude", ...}]). Both end up as a <see cref="StreamSet"/>.
-    /// </summary>
-    private async Task<StreamSet> GetStreamsAsync(string path, CancellationToken ct)
-    {
-        var node = await GetAsync<JsonNode>(path, ct);
-        if (node is JsonArray array)
-        {
-            var keyed = new JsonObject();
-            foreach (var stream in array.OfType<JsonObject>())
-            {
-                if (stream["type"]?.GetValue<string>() is { } type) keyed[type] = stream.DeepClone();
-            }
-            node = keyed;
-        }
-        try
-        {
-            return node.Deserialize<StreamSet>(StravaJson.Options) ?? new StreamSet();
         }
         catch (JsonException ex)
         {

@@ -11,7 +11,7 @@ namespace Straapp.Infrastructure.Strava;
 /// </summary>
 internal sealed class StravaRateLimiter(TimeProvider time, ILogger<StravaRateLimiter> logger) : IStravaRateLimitStatus
 {
-    /// <summary>Keep a couple of requests in hand for the passthrough endpoints while a sync runs.</summary>
+    /// <summary>Stop a couple of requests short: usage is only known from the previous response.</summary>
     private const int Headroom = 2;
 
     private readonly Lock _lock = new();

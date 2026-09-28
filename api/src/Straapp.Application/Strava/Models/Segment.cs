@@ -1,6 +1,6 @@
 namespace Straapp.Application.Strava.Models;
 
-public record SummarySegment
+public sealed record SummarySegment
 {
     public long Id { get; init; }
     public int ResourceState { get; init; }
@@ -25,18 +25,6 @@ public record SummarySegment
     public DateTimeOffset? StarredDate { get; init; }
     public SegmentEffortSummary? AthletePrEffort { get; init; }
     public SegmentStats? AthleteSegmentStats { get; init; }
-}
-
-/// <summary><c>GET /segments/{id}</c>.</summary>
-public sealed record DetailedSegment : SummarySegment
-{
-    public DateTimeOffset? CreatedAt { get; init; }
-    public DateTimeOffset? UpdatedAt { get; init; }
-    public double? TotalElevationGain { get; init; }
-    public PolylineMap? Map { get; init; }
-    public int? EffortCount { get; init; }
-    public int? AthleteCount { get; init; }
-    public int? StarCount { get; init; }
 }
 
 /// <summary>The athlete's own record on a segment.</summary>
