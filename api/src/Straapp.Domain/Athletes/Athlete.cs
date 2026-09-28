@@ -23,8 +23,6 @@ public class Athlete
     public string RawJson { get; set; } = "{}";
     /// <summary>The <c>GET /athlete/zones</c> response as JSON.</summary>
     public string? ZonesJson { get; set; }
-    /// <summary>The <c>GET /athletes/{id}/stats</c> response as JSON: Strava's own recent, year and all-time totals.</summary>
-    public string? StatsJson { get; set; }
     public DateTimeOffset SyncedAt { get; set; }
 }
 

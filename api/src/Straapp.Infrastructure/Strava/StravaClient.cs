@@ -9,7 +9,7 @@ using Straapp.Application.Strava.Models;
 namespace Straapp.Infrastructure.Strava;
 
 /// <summary>Typed <see cref="HttpClient"/> over Strava API v3. Tokens are added by <see cref="StravaAuthHandler"/>.</summary>
-internal sealed class StravaClient(HttpClient http, IStravaAuthService auth) : IStravaClient
+internal sealed class StravaClient(HttpClient http) : IStravaClient
 {
     /// <summary>Strava's own maximum page size.</summary>
     private const int MaxPerPage = 200;
@@ -23,10 +23,6 @@ internal sealed class StravaClient(HttpClient http, IStravaAuthService auth) : I
 
     public Task<AthleteZones> GetAthleteZonesAsync(CancellationToken ct = default) =>
         GetAsync<AthleteZones>("athlete/zones", ct);
-
-    // Note the plural "athletes": this one takes the id in the path.
-    public Task<ActivityStats> GetAthleteStatsAsync(CancellationToken ct = default) =>
-        GetAsync<ActivityStats>($"athletes/{auth.GetAthleteId()}/stats", ct);
 
     public Task<DetailedGear> GetGearAsync(string gearId, CancellationToken ct = default) =>
         GetAsync<DetailedGear>($"gear/{Uri.EscapeDataString(gearId)}", ct);

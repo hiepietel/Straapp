@@ -71,35 +71,3 @@ public sealed record AthleteZones
     public HeartRateZoneRanges? HeartRate { get; init; }
     public PowerZoneRanges? Power { get; init; }
 }
-
-/// <summary>One of the nine totals blocks in <see cref="ActivityStats"/>.</summary>
-public sealed record ActivityTotal
-{
-    public int Count { get; init; }
-    /// <summary>Metres.</summary>
-    public double Distance { get; init; }
-    /// <summary>Seconds.</summary>
-    public int MovingTime { get; init; }
-    /// <summary>Seconds.</summary>
-    public int ElapsedTime { get; init; }
-    /// <summary>Metres.</summary>
-    public double ElevationGain { get; init; }
-    /// <summary>Only set on the "recent" (last 4 weeks) totals.</summary>
-    public int? AchievementCount { get; init; }
-}
-
-/// <summary><c>GET /athletes/{id}/stats</c>: recent, year-to-date and all-time totals.</summary>
-public sealed record ActivityStats
-{
-    public double? BiggestRideDistance { get; init; }
-    public double? BiggestClimbElevationGain { get; init; }
-    public ActivityTotal? RecentRideTotals { get; init; }
-    public ActivityTotal? RecentRunTotals { get; init; }
-    public ActivityTotal? RecentSwimTotals { get; init; }
-    public ActivityTotal? YtdRideTotals { get; init; }
-    public ActivityTotal? YtdRunTotals { get; init; }
-    public ActivityTotal? YtdSwimTotals { get; init; }
-    public ActivityTotal? AllRideTotals { get; init; }
-    public ActivityTotal? AllRunTotals { get; init; }
-    public ActivityTotal? AllSwimTotals { get; init; }
-}

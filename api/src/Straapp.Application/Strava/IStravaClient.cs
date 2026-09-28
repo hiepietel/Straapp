@@ -14,8 +14,6 @@ public interface IStravaClient
 
     Task<AthleteZones> GetAthleteZonesAsync(CancellationToken ct = default);
 
-    Task<ActivityStats> GetAthleteStatsAsync(CancellationToken ct = default);
-
     /// <summary>Also works for retired gear, which the athlete no longer lists.</summary>
     Task<DetailedGear> GetGearAsync(string gearId, CancellationToken ct = default);
 

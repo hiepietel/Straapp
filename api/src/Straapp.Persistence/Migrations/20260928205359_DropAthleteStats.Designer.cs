@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Straapp.Persistence;
@@ -11,9 +12,11 @@ using Straapp.Persistence;
 namespace Straapp.Persistence.Migrations
 {
     [DbContext(typeof(StraappDbContext))]
-    partial class StraappDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260928205359_DropAthleteStats")]
+    partial class DropAthleteStats
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

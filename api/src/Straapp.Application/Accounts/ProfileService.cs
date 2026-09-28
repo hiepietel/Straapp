@@ -6,9 +6,8 @@ using Straapp.Application.Strava.Models;
 namespace Straapp.Application.Accounts;
 
 /// <summary>What the profile page shows, as last synced: never fetched from Strava on the way.</summary>
-/// <param name="Stats">Null until a sync has fetched Strava's totals.</param>
 /// <param name="Zones">Null until a sync has fetched them, or if Strava won't share them.</param>
-public sealed record Profile(DetailedAthlete Athlete, ActivityStats? Stats, AthleteZones? Zones);
+public sealed record Profile(DetailedAthlete Athlete, AthleteZones? Zones);
 
 public sealed class ProfileService(IAthleteRepository athletes)
 {
@@ -20,7 +19,6 @@ public sealed class ProfileService(IAthleteRepository athletes)
 
         return new Profile(
             Read<DetailedAthlete>(athlete.RawJson) ?? new DetailedAthlete { Id = athlete.Id, Firstname = athlete.Firstname, Lastname = athlete.Lastname },
-            Read<ActivityStats>(athlete.StatsJson),
             Read<AthleteZones>(athlete.ZonesJson));
     }
 
