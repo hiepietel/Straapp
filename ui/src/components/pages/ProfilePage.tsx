@@ -53,7 +53,7 @@ function SectionBody<T>({
 }
 
 export default function ProfilePage() {
-  const { athlete, stats, zones, retry } = useAthleteProfile();
+  const { athlete, totals, zones, retry } = useAthleteProfile();
 
   if (athlete.status === "loading") {
     return (
@@ -153,9 +153,9 @@ export default function ProfilePage() {
           </CollapsibleSection>
         )}
 
-        <CollapsibleSection title="Stats">
-          <SectionBody section={stats} onRetry={retry}>
-            {(data) => <AthleteStatsPanel stats={data} />}
+        <CollapsibleSection title="Totals">
+          <SectionBody section={totals} onRetry={retry}>
+            {(data) => <AthleteStatsPanel totals={data} />}
           </SectionBody>
         </CollapsibleSection>
 

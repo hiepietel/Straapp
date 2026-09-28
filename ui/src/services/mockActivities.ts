@@ -4,9 +4,7 @@ import type {
   Activity,
   ActivityDetail,
   ActivityStreams,
-  ActivityTotal,
   Athlete,
-  AthleteStats,
   AthleteZones,
   Split,
   SportType,
@@ -262,35 +260,6 @@ export const mockAthleteZones: AthleteZones = {
       { min: 392, max: -1 },
     ],
   },
-};
-
-const totalsOf = (
-  count: number,
-  km: number,
-  hours: number,
-  elevation: number,
-  achievements?: number
-): ActivityTotal => ({
-  count,
-  distance: km * 1000,
-  moving_time: Math.round(hours * 3600),
-  elapsed_time: Math.round(hours * 3600 * 1.08),
-  elevation_gain: elevation,
-  ...(achievements !== undefined ? { achievement_count: achievements } : {}),
-});
-
-export const mockAthleteStats: AthleteStats = {
-  biggest_ride_distance: 92_300,
-  biggest_climb_elevation_gain: 812,
-  recent_ride_totals: totalsOf(4, 138, 5.6, 1120, 6),
-  recent_run_totals: totalsOf(9, 84, 8.1, 640, 11),
-  recent_swim_totals: totalsOf(1, 1.3, 0.4, 0, 0),
-  ytd_ride_totals: totalsOf(38, 1240, 48, 9800),
-  ytd_run_totals: totalsOf(96, 812, 78, 6400),
-  ytd_swim_totals: totalsOf(12, 15.6, 5, 0),
-  all_ride_totals: totalsOf(214, 8900, 340, 68_000),
-  all_run_totals: totalsOf(512, 4300, 410, 33_000),
-  all_swim_totals: totalsOf(64, 82, 26, 0),
 };
 
 const DESCRIPTIONS = [

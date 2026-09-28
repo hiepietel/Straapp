@@ -1,109 +1,133 @@
-import StatItem from "../molecules/StatItem";
-import { formatDistance, formatDuration, formatElevation } from "../../utils/format";
-import type { ActivityTotal, AthleteStats } from "../../types/strava";
+import { useState } from "react";
+import FilterTabs from "../molecules/FilterTabs";
+import { activityHref } from "../../hooks/useRoute";
+import { formatDistance, formatDuration, formatElevation, formatShortDate } from "../../utils/format";
+import { GROUPS } from "../../utils/sports";
+import type { ActivityRef } from "../../types/gear";
+import type { PeriodTotals, ProfileTotals, TotalsPeriod, Visibility } from "../../types/profile";
+import type { Totals } from "../../types/statistics";
+import type { FilterOption } from "../molecules/FilterTabs";
 
 const CELL = "px-3 py-2 sm:px-4";
 
-interface Row {
-  label: string;
-  totals: ActivityTotal;
+const VISIBILITY_OPTIONS: FilterOption<Visibility>[] = [
+  { id: "all", label: "All activities" },
+  { id: "public", label: "Public" },
+  { id: "private", label: "Private" },
+];
+
+const PERIOD_TITLES: Record<TotalsPeriod, string> = {
+  recent: "Last 4 weeks",
+  year: "Year to date",
+  allTime: "All time",
+};
+
+function TotalsRow({ label, totals, strong = false }: { label: string; totals: Totals; strong?: boolean }) {
+  const weight = strong ? " font-bold" : "";
+  return (
+    <tr className="border-b border-line last:border-b-0">
+      <th scope="row" className={CELL + (strong ? " font-bold" : " font-semibold")}>
+        {label}
+      </th>
+      <td className={CELL + " num text-right" + weight}>{totals.count.toLocaleString()}</td>
+      <td className={CELL + " num text-right" + weight}>{formatDistance(totals.distance)}</td>
+      <td className={CELL + " num text-right" + weight}>{formatDuration(totals.movingTime)}</td>
+      <td className={CELL + " num text-right" + weight}>{formatElevation(totals.elevation)}</td>
+    </tr>
+  );
 }
 
-function TotalsTable({ rows }: { rows: Row[] }) {
+function PeriodTable({ period }: { period: PeriodTotals }) {
   return (
     <div className="overflow-x-auto rounded-lg border border-line bg-chalk">
       <table className="w-full text-left text-sm whitespace-nowrap">
+        <caption className="sr-only">{PERIOD_TITLES[period.period]}, per sport</caption>
         <thead className="border-b border-line text-mute">
           <tr>
-            <th scope="col" className={CELL + " font-semibold"}>
-              Sport
-            </th>
-            <th scope="col" className={CELL + " font-semibold"}>
-              Activities
-            </th>
-            <th scope="col" className={CELL + " font-semibold"}>
-              Distance
-            </th>
-            <th scope="col" className={CELL + " font-semibold"}>
-              Time
-            </th>
-            <th scope="col" className={CELL + " font-semibold"}>
-              Elevation
-            </th>
+            <th scope="col" className={CELL + " font-semibold"}>Sport</th>
+            <th scope="col" className={CELL + " text-right font-semibold"}>Activities</th>
+            <th scope="col" className={CELL + " text-right font-semibold"}>Distance</th>
+            <th scope="col" className={CELL + " text-right font-semibold"}>Time</th>
+            <th scope="col" className={CELL + " text-right font-semibold"}>Elevation</th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <tr key={row.label} className="border-b border-line last:border-b-0">
-              <th scope="row" className={CELL + " font-semibold"}>
-                {row.label}
-              </th>
-              <td className={CELL + " num"}>{row.totals.count}</td>
-              <td className={CELL + " num"}>{formatDistance(row.totals.distance)}</td>
-              <td className={CELL + " num"}>{formatDuration(row.totals.moving_time)}</td>
-              <td className={CELL + " num"}>{formatElevation(row.totals.elevation_gain)}</td>
-            </tr>
+          {period.sports.map((s) => (
+            <TotalsRow key={s.sport} label={GROUPS[s.sport].label} totals={s.totals} />
           ))}
         </tbody>
+        {period.sports.length > 1 && (
+          <tfoot className="border-t-2 border-line">
+            <TotalsRow label="All sports" totals={period.all} strong />
+          </tfoot>
+        )}
       </table>
     </div>
   );
 }
 
-export interface AthleteStatsPanelProps {
-  stats: AthleteStats;
+function Record({ label, activity, value }: { label: string; activity: ActivityRef; value: string }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-sm text-mute">{label}</dt>
+      <dd className="num text-xl leading-tight font-bold">{value}</dd>
+      <dd className="truncate text-sm">
+        <a href={activityHref(activity.id)} className="hover:underline">
+          {activity.name}
+        </a>{" "}
+        <span className="text-mute">· {formatShortDate(activity.date)}</span>
+      </dd>
+    </div>
+  );
 }
 
-// GET /athletes/{id}/stats — lifetime, year-to-date and last-4-weeks totals per sport.
-export default function AthleteStatsPanel({ stats }: AthleteStatsPanelProps) {
-  const groups: { title: string; rows: Row[] }[] = [
-    {
-      title: "Last 4 weeks",
-      rows: [
-        { label: "Run", totals: stats.recent_run_totals },
-        { label: "Ride", totals: stats.recent_ride_totals },
-        { label: "Swim", totals: stats.recent_swim_totals },
-      ],
-    },
-    {
-      title: "Year to date",
-      rows: [
-        { label: "Run", totals: stats.ytd_run_totals },
-        { label: "Ride", totals: stats.ytd_ride_totals },
-        { label: "Swim", totals: stats.ytd_swim_totals },
-      ],
-    },
-    {
-      title: "All time",
-      rows: [
-        { label: "Run", totals: stats.all_run_totals },
-        { label: "Ride", totals: stats.all_ride_totals },
-        { label: "Swim", totals: stats.all_swim_totals },
-      ],
-    },
-  ];
+export interface AthleteStatsPanelProps {
+  totals: ProfileTotals;
+}
+
+// Counted by the API from the synced activities: every sport, and split by who can see them.
+export default function AthleteStatsPanel({ totals }: AthleteStatsPanelProps) {
+  const [visibility, setVisibility] = useState<Visibility>("all");
+  const shown = totals[visibility];
+  const empty = shown.periods.every((p) => p.all.count === 0);
 
   return (
     <div className="space-y-6">
-      {(!!stats.biggest_ride_distance || !!stats.biggest_climb_elevation_gain) && (
-        <dl className="flex flex-wrap gap-x-12 gap-y-4">
-          {!!stats.biggest_ride_distance && (
-            <StatItem label="Biggest ride" value={formatDistance(stats.biggest_ride_distance)} />
+      <FilterTabs options={VISIBILITY_OPTIONS} value={visibility} onChange={setVisibility} label="Which activities" />
+
+      {empty ? (
+        <p className="text-sm text-mute">
+          {visibility === "private" ? "No private activities." : visibility === "public" ? "No public activities." : "No activities synced yet."}
+        </p>
+      ) : (
+        <>
+          {(shown.longest || shown.biggestClimb || shown.longestTime) && (
+            <dl className="grid gap-4 sm:grid-cols-3">
+              {shown.longest && <Record label="Longest" activity={shown.longest} value={formatDistance(shown.longest.distance)} />}
+              {shown.biggestClimb && (
+                <Record label="Biggest climb" activity={shown.biggestClimb} value={formatElevation(shown.biggestClimb.elevation)} />
+              )}
+              {shown.longestTime && (
+                <Record label="Longest time" activity={shown.longestTime} value={formatDuration(shown.longestTime.movingTime)} />
+              )}
+            </dl>
           )}
-          {!!stats.biggest_climb_elevation_gain && (
-            <StatItem
-              label="Biggest climb"
-              value={formatElevation(stats.biggest_climb_elevation_gain)}
-            />
-          )}
-        </dl>
+
+          {shown.periods.map((period) => (
+            <div key={period.period}>
+              <h3 className="mb-2 text-sm font-semibold text-mute">
+                {PERIOD_TITLES[period.period]}
+                {period.from && <span className="font-normal"> · since {formatShortDate(period.from)}</span>}
+              </h3>
+              {period.all.count === 0 ? (
+                <p className="text-sm text-mute">No activities in this period.</p>
+              ) : (
+                <PeriodTable period={period} />
+              )}
+            </div>
+          ))}
+        </>
       )}
-      {groups.map((group) => (
-        <div key={group.title}>
-          <h3 className="mb-2 text-sm font-semibold text-mute">{group.title}</h3>
-          <TotalsTable rows={group.rows} />
-        </div>
-      ))}
     </div>
   );
 }

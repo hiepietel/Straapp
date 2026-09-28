@@ -174,34 +174,3 @@ export interface AthleteZones {
   heart_rate?: { custom_zones: boolean; zones: ZoneRange[] };
   power?: { zones: ZoneRange[] };
 }
-
-/** One of the nine totals blocks in `GET /athletes/{id}/stats`. */
-export interface ActivityTotal {
-  count: number;
-  /** Metres. */
-  distance: number;
-  /** Seconds. */
-  moving_time: number;
-  /** Seconds. */
-  elapsed_time: number;
-  /** Metres. */
-  elevation_gain: number;
-  /** Only present on the "recent" (last 4 weeks) totals. */
-  achievement_count?: number;
-}
-
-export interface AthleteStats {
-  /** Metres. */
-  biggest_ride_distance?: number;
-  /** Metres. */
-  biggest_climb_elevation_gain?: number;
-  recent_ride_totals: ActivityTotal;
-  recent_run_totals: ActivityTotal;
-  recent_swim_totals: ActivityTotal;
-  ytd_ride_totals: ActivityTotal;
-  ytd_run_totals: ActivityTotal;
-  ytd_swim_totals: ActivityTotal;
-  all_ride_totals: ActivityTotal;
-  all_run_totals: ActivityTotal;
-  all_swim_totals: ActivityTotal;
-}

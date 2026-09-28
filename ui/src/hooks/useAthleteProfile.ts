@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { fetchProfile } from "../services/profileApi";
+import { fetchProfile, fetchProfileTotals } from "../services/profileApi";
+import { localNow } from "../utils/periodStats";
+import type { ProfileTotals } from "../types/profile";
 import { getErrorMessage } from "../utils/errors";
-import type { Athlete, AthleteStats, AthleteZones } from "../types/strava";
+import type { Athlete, AthleteZones } from "../types/strava";
 
 export type SectionStatus = "loading" | "ready" | "error";
 
@@ -17,16 +19,16 @@ const failed = <T,>(error: string): Section<T> => ({ status: "error", data: null
 
 export interface UseAthleteProfileResult {
   athlete: Section<Athlete>;
-  stats: Section<AthleteStats>;
+  totals: Section<ProfileTotals>;
   zones: Section<AthleteZones>;
   retry: () => void;
 }
 
-// One request for the whole profile. Totals and zones can still be missing on their own (not synced
-// yet, or zones Strava won't share), so each section reports separately.
+// The profile (with zones) and the totals are separate requests, and each section reports on its own:
+// zones can be missing (not synced yet, or Strava won't share them) while the rest is fine.
 export function useAthleteProfile(): UseAthleteProfileResult {
   const [athlete, setAthlete] = useState<Section<Athlete>>(loading);
-  const [stats, setStats] = useState<Section<AthleteStats>>(loading);
+  const [totals, setTotals] = useState<Section<ProfileTotals>>(loading);
   const [zones, setZones] = useState<Section<AthleteZones>>(loading);
   // Bumped by retry() to re-run the effect.
   const [attempt, setAttempt] = useState(0);
@@ -34,14 +36,13 @@ export function useAthleteProfile(): UseAthleteProfileResult {
   useEffect(() => {
     let active = true;
     setAthlete(loading());
-    setStats(loading());
+    setTotals(loading());
     setZones(loading());
 
     fetchProfile()
       .then((profile) => {
         if (!active) return;
         setAthlete(ready(profile.athlete));
-        setStats(profile.stats ? ready(profile.stats) : failed("Your totals arrive with the next sync."));
         setZones(
           profile.zones ? ready(profile.zones) : failed("No training zones yet: they arrive with the next sync, if Strava shares them.")
         );
@@ -50,9 +51,12 @@ export function useAthleteProfile(): UseAthleteProfileResult {
         if (!active) return;
         const message = getErrorMessage(err);
         setAthlete(failed(message));
-        setStats(failed("The profile couldn't be loaded."));
         setZones(failed("The profile couldn't be loaded."));
       });
+
+    fetchProfileTotals(localNow().toISOString().slice(0, 10))
+      .then((data) => active && setTotals(ready(data)))
+      .catch((err: unknown) => active && setTotals(failed(getErrorMessage(err))));
 
     return () => {
       active = false;
@@ -61,5 +65,5 @@ export function useAthleteProfile(): UseAthleteProfileResult {
 
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
 
-  return { athlete, stats, zones, retry };
+  return { athlete, totals, zones, retry };
 }
