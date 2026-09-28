@@ -1,4 +1,5 @@
 import { formatDistance, formatElevation } from "./format";
+import type { Totals } from "../types/statistics";
 
 /*
  * Measures for comparing a period with the one before it. The totals themselves come
@@ -12,6 +13,20 @@ export const METRIC_LABELS: Record<Metric, string> = {
   time: "Time",
   elevation: "Elevation",
   count: "Activities",
+};
+
+/** The chosen measure out of a set of totals. */
+export const metricValue = (totals: Totals, metric: Metric): number => {
+  switch (metric) {
+    case "distance":
+      return totals.distance;
+    case "time":
+      return totals.movingTime;
+    case "elevation":
+      return totals.elevation;
+    case "count":
+      return totals.count;
+  }
 };
 
 function formatHours(seconds: number): string {

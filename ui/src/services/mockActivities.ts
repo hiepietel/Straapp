@@ -8,7 +8,6 @@ import type {
   Athlete,
   AthleteStats,
   AthleteZones,
-  GearDetail,
   Split,
   SportType,
   StreamData,
@@ -240,17 +239,6 @@ export const mockAthlete: Athlete = {
     { id: "g2", name: "Hoka Speedgoat 5", distance: 705_000, primary: false },
   ],
 };
-
-const MOCK_RETIRED_GEAR: GearDetail[] = [
-  { id: "g3", name: "Nike Pegasus 38", distance: 842_000, retired: true, brand_name: "Nike", model_name: "Pegasus 38" },
-];
-
-export function mockGearDetail(id: string): GearDetail {
-  const all: GearDetail[] = [...(mockAthlete.bikes ?? []), ...(mockAthlete.shoes ?? []), ...MOCK_RETIRED_GEAR];
-  const gear = all.find((g) => g.id === id);
-  if (!gear) throw new Error("Gear not found.");
-  return { retired: false, ...gear };
-}
 
 export const mockAthleteZones: AthleteZones = {
   heart_rate: {

@@ -5,7 +5,6 @@ import {
   mockAthlete,
   mockAthleteStats,
   mockAthleteZones,
-  mockGearDetail,
 } from "./mockActivities";
 import { isDemo } from "./auth";
 import { apiGet } from "./api";
@@ -17,7 +16,6 @@ import type {
   Athlete,
   AthleteStats,
   AthleteZones,
-  GearDetail,
 } from "../types/strava";
 
 // The API passes these through from Strava for the logged-in athlete, in Strava's own format.
@@ -75,15 +73,6 @@ export async function fetchActivityStreams(id: number): Promise<ActivityStreams>
 export async function fetchAthlete(): Promise<Athlete> {
   if (isDemo) return mockAthlete;
   return stravaGet<Athlete>("/athlete");
-}
-
-/** One bike or pair of shoes — how retired gear (absent from the athlete) gets its name. */
-export async function fetchGear(id: string): Promise<GearDetail> {
-  if (isDemo) {
-    await wait(150);
-    return mockGearDetail(id);
-  }
-  return stravaGet<GearDetail>(`/gear/${encodeURIComponent(id)}`);
 }
 
 /** Heart-rate and power training zones. Needs the `profile:read_all` scope. */

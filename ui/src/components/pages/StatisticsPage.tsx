@@ -11,7 +11,7 @@ import { useStatistics } from "../../hooks/useStatistics";
 import { isDemo } from "../../services/auth";
 import { GROUPS } from "../../utils/sports";
 import type { SportGroupId } from "../../utils/sports";
-import { METRIC_LABELS, formatMetric, formatMetricTick, localNow } from "../../utils/periodStats";
+import { METRIC_LABELS, formatMetric, formatMetricTick, localNow, metricValue } from "../../utils/periodStats";
 import type { Metric } from "../../utils/periodStats";
 import type { PeriodComparison, Totals } from "../../types/statistics";
 import type { FilterOption } from "../molecules/FilterTabs";
@@ -40,19 +40,6 @@ function weekRange(monday: string): string {
   const end = new Date(start.getTime() + 6 * 24 * 3600 * 1000);
   return `${dayMonth.format(start)} – ${dayMonth.format(end)}`;
 }
-
-const metricValue = (totals: Totals, metric: Metric): number => {
-  switch (metric) {
-    case "distance":
-      return totals.distance;
-    case "time":
-      return totals.movingTime;
-    case "elevation":
-      return totals.elevation;
-    case "count":
-      return totals.count;
-  }
-};
 
 const PERIOD_LABELS: Record<PeriodComparison["period"], { label: string; previousLabel: string }> = {
   week: { label: "This week", previousLabel: "same days last week" },

@@ -136,13 +136,6 @@ export interface Gear {
   retired?: boolean;
 }
 
-/** `GET /gear/{id}`. */
-export interface GearDetail extends Gear {
-  brand_name?: string | null;
-  model_name?: string | null;
-  description?: string | null;
-}
-
 export interface Athlete {
   id: number;
   firstname: string;
