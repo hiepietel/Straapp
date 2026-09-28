@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 
 namespace Straapp.Application.Strava;
 
@@ -14,6 +15,8 @@ public static class StravaJson
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
         Converters = { new LenientInt32Converter() },
+        // Explicit, so ASP.NET Core can freeze these options for its output formatter.
+        TypeInfoResolver = new DefaultJsonTypeInfoResolver(),
     };
 
     public static string Serialize<T>(T value) => JsonSerializer.Serialize(value, Options);
