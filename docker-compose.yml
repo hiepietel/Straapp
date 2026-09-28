@@ -1,0 +1,44 @@
+# The whole app on one machine, from the same images Kubernetes runs: handy for trying a build locally.
+#   cp .env.example .env   # then fill it in
+#   docker compose up --build
+# The app is then at http://localhost:8080 (Strava allows localhost as a login callback).
+
+name: straapp
+
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: straapp
+      POSTGRES_USER: straapp
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      # PostgreSQL 18 keeps its data under /var/lib/postgresql/18/docker.
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U straapp -d straapp"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: ./api
+    environment:
+      # No Kerberos: the chiseled image has no GSSAPI library, and PostgreSQL here uses passwords.
+      ConnectionStrings__Straapp: Host=db;Database=straapp;Username=straapp;Password=${POSTGRES_PASSWORD};GSS Encryption Mode=Disable
+      Strava__ClientId: ${STRAVA_CLIENT_ID:?set STRAVA_CLIENT_ID in .env}
+      Strava__ClientSecret: ${STRAVA_CLIENT_SECRET:?set STRAVA_CLIENT_SECRET in .env}
+      Auth__SigningKey: ${AUTH_SIGNING_KEY:?set AUTH_SIGNING_KEY in .env}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  ui:
+    build: ./ui
+    ports:
+      - "8080:8080"
+    depends_on:
+      - api
+
+volumes:
+  db-data:
