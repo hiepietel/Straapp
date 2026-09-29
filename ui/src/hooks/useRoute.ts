@@ -6,7 +6,8 @@ export type Route =
   | { name: "profile" }
   | { name: "statistics" }
   | { name: "gear" }
-  | { name: "heatmap" };
+  | { name: "heatmap" }
+  | { name: "insights" };
 
 // Hash routes (#/activities/123) keep working on any static host, need no server rewrites,
 // and leave the path alone, which the Strava login redirect relies on.
@@ -15,6 +16,7 @@ export const PROFILE_HREF = "#/profile";
 export const STATISTICS_HREF = "#/statistics";
 export const GEAR_HREF = "#/gear";
 export const HEATMAP_HREF = "#/heatmap";
+export const INSIGHTS_HREF = "#/general-statistics";
 export const activityHref = (id: number): string => `#/activities/${id}`;
 
 export function parseRoute(hash: string): Route {
@@ -24,6 +26,7 @@ export function parseRoute(hash: string): Route {
   if (/^#\/statistics\/?$/.test(hash)) return { name: "statistics" };
   if (/^#\/gear\/?$/.test(hash)) return { name: "gear" };
   if (/^#\/heatmap\/?$/.test(hash)) return { name: "heatmap" };
+  if (/^#\/general-statistics\/?$/.test(hash)) return { name: "insights" };
   return { name: "list" };
 }
 
