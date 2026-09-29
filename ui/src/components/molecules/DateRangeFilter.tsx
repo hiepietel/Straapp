@@ -10,6 +10,7 @@ export type DateRangePreset =
   | "3m"
   | "6m"
   | "ytd"
+  | "year"
   | "custom";
 
 export interface DateRange {
@@ -18,9 +19,14 @@ export interface DateRange {
   from: string;
   /** `yyyy-mm-dd`; only meaningful (and optional either way) when `preset` is `"custom"`. */
   to: string;
+  /** The calendar year shown when `preset` is `"year"`. */
+  year: number;
 }
 
-export const DEFAULT_DATE_RANGE: DateRange = { preset: "30d", from: "", to: "" };
+export const DEFAULT_DATE_RANGE: DateRange = { preset: "30d", from: "", to: "", year: new Date().getFullYear() };
+
+/** Strava started in 2009: no activity can be older. */
+const FIRST_YEAR = 2009;
 
 const PRESETS: { id: DateRangePreset; label: string }[] = [
   { id: "7d", label: "Last 7 days" },
@@ -31,6 +37,7 @@ const PRESETS: { id: DateRangePreset; label: string }[] = [
   { id: "3m", label: "Last 3 months" },
   { id: "6m", label: "Last 6 months" },
   { id: "ytd", label: "Year to date" },
+  { id: "year", label: "Year" },
   { id: "custom", label: "Custom" },
 ];
 
@@ -44,7 +51,7 @@ function localDateAsUtc(date: Date, dayOffset = 0): number {
 }
 
 /** The `[since, until)` window (epoch ms) a range covers; open-ended where the range leaves a side blank. */
-export function rangeBounds({ preset, from, to }: DateRange): { since: number; until: number } {
+export function rangeBounds({ preset, from, to, year }: DateRange): { since: number; until: number } {
   const now = new Date();
   switch (preset) {
     case "custom":
@@ -68,11 +75,14 @@ export function rangeBounds({ preset, from, to }: DateRange): { since: number; u
       return { since: Date.UTC(now.getFullYear(), now.getMonth() - 6, now.getDate()), until: Infinity };
     case "ytd":
       return { since: Date.UTC(now.getFullYear(), 0, 1), until: Infinity };
+    case "year":
+      return { since: Date.UTC(year, 0, 1), until: Date.UTC(year + 1, 0, 1) - 1 };
   }
 }
 
 /** A short human label for the current range, for use as a heading. */
 export function rangeLabel(range: DateRange): string {
+  if (range.preset === "year") return String(range.year);
   if (range.preset !== "custom") return PRESETS.find((p) => p.id === range.preset)!.label;
   const { from, to } = range;
   if (from && to) return `${formatShortDate(from)} – ${formatShortDate(to)}`;
@@ -89,6 +99,8 @@ export interface DateRangeFilterProps {
 export default function DateRangeFilter({ value, onChange }: DateRangeFilterProps) {
   const setFrom = (e: ChangeEvent<HTMLInputElement>) => onChange({ ...value, from: e.target.value });
   const setTo = (e: ChangeEvent<HTMLInputElement>) => onChange({ ...value, to: e.target.value });
+  const thisYear = new Date().getFullYear();
+  const years = Array.from({ length: thisYear - FIRST_YEAR + 1 }, (_, i) => thisYear - i);
 
   return (
     <div className="flex flex-wrap items-center gap-3">
@@ -110,6 +122,22 @@ export default function DateRangeFilter({ value, onChange }: DateRangeFilterProp
           );
         })}
       </div>
+      {value.preset === "year" && (
+        <label className="flex items-center gap-1.5 text-sm text-mute">
+          Year
+          <select
+            value={value.year}
+            onChange={(e) => onChange({ ...value, year: Number(e.target.value) })}
+            className="num rounded-md border border-line bg-chalk px-2 py-1 font-semibold text-ink"
+          >
+            {years.map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       {value.preset === "custom" && (
         <div className="flex flex-wrap items-center gap-2 text-sm text-mute">
           <label className="flex items-center gap-1.5">
