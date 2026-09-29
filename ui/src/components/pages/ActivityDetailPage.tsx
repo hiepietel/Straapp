@@ -11,8 +11,10 @@ import PrivacyBadge from "../molecules/PrivacyBadge";
 import StatItem from "../molecules/StatItem";
 import SplitsTable from "../organisms/SplitsTable";
 import ActivityCharts, { hasChartableStreams } from "../organisms/ActivityCharts";
+import WeatherPanel from "../organisms/WeatherPanel";
 import { useActivity } from "../../hooks/useActivity";
 import { useActivityStreams } from "../../hooks/useActivityStreams";
+import { useActivityWeather } from "../../hooks/useActivityWeather";
 import { LIST_HREF } from "../../hooks/useRoute";
 import { buildDetailStats } from "../../utils/activityStats";
 import { formatDate } from "../../utils/format";
@@ -38,6 +40,7 @@ export interface ActivityDetailPageProps {
 export default function ActivityDetailPage({ id }: ActivityDetailPageProps) {
   const { status, activity, error, retry } = useActivity(id);
   const streams = useActivityStreams(id);
+  const weather = useActivityWeather(id);
   // Where along the route (0–1) a chart is hovered/focused — shared by every chart and the map.
   const [hoverFraction, setHoverFraction] = useState<number | null>(null);
   // The split row under the pointer, if any — it wins over the charts' hover position.
@@ -181,6 +184,18 @@ export default function ActivityDetailPage({ id }: ActivityDetailPageProps) {
               highlightLabel={activeLabel}
             />
           </CollapsibleSection>
+        )}
+
+        {/* Indoor, virtual and manual activities have no weather to show. */}
+        {weather.weather && weather.weather.status !== "notApplicable" && (
+          <CollapsibleSection title="Weather">
+            <WeatherPanel weather={weather.weather} />
+          </CollapsibleSection>
+        )}
+        {weather.status === "error" && (
+          <Notice tone="error" actionLabel="Try again" onAction={weather.retry}>
+            Couldn't load the weather. {weather.error}
+          </Notice>
         )}
 
         {splits.length > 0 && (
