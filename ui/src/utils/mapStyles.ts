@@ -74,3 +74,33 @@ export const DEFAULT_ROUTE_COLOR = ROUTE_COLORS[0].value;
 
 export const isHexColor = (value: unknown): value is string =>
   typeof value === "string" && /^#[0-9a-f]{6}$/i.test(value);
+
+export interface OverlayLayer {
+  label: string;
+  url: string;
+  attribution: string;
+  maxZoom: number;
+  subdomains?: string;
+}
+
+/** See-through layers drawn over the map background; they show cycling infrastructure only. */
+export const BIKE_OVERLAYS = {
+  lanes: {
+    label: "Bike paths & lanes",
+    url: "https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm-lite/{z}/{x}/{y}.png",
+    attribution: `<a href="https://www.cyclosm.org" target="_blank" rel="noopener noreferrer">CyclOSM</a>`,
+    maxZoom: 20,
+    subdomains: "abc",
+  },
+  routes: {
+    label: "Signed cycle routes",
+    url: "https://tile.waymarkedtrails.org/cycling/{z}/{x}/{y}.png",
+    attribution: `<a href="https://cycling.waymarkedtrails.org" target="_blank" rel="noopener noreferrer">Waymarked Trails</a>`,
+    maxZoom: 18,
+  },
+} as const satisfies Record<string, OverlayLayer>;
+
+export type BikeOverlayId = keyof typeof BIKE_OVERLAYS;
+
+export const isBikeOverlayId = (value: unknown): value is BikeOverlayId =>
+  typeof value === "string" && Object.hasOwn(BIKE_OVERLAYS, value);

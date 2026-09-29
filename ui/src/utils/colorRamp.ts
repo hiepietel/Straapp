@@ -42,3 +42,9 @@ export function percentile(values: readonly number[], p: number): number {
   const sorted = [...values].sort((a, b) => a - b);
   return sorted[Math.min(sorted.length - 1, Math.max(0, Math.round(p * (sorted.length - 1))))]!;
 }
+
+// How often you've been somewhere: rarely is cold blue, most often is hot red. Every step stays
+// saturated enough to show on the light maps as well as on satellite imagery.
+export const HEAT_RAMP: ColorRamp = {
+  stops: ["#3b4cc0", "#2c8fcf", "#1fa187", "#a0c02b", "#f4c430", "#f07f13", "#d62828"],
+};

@@ -146,3 +146,39 @@ export async function fetchRouteSurfaces(points: readonly LatLng[], signal?: Abo
 
   return smooth(classes);
 }
+
+/** One OpenStreetMap road with its surface. */
+export interface SurfaceWay {
+  surface: SurfaceClass;
+  points: LatLng[];
+}
+
+export interface AreaBounds {
+  south: number;
+  west: number;
+  north: number;
+  east: number;
+}
+
+/**
+ * Every road in the area with its surface, from the public Overpass API. Only for small areas
+ * (a few kilometres across): a whole city is tens of megabytes.
+ */
+export async function fetchAreaSurfaces(area: AreaBounds, signal?: AbortSignal): Promise<SurfaceWay[]> {
+  const box = [area.south, area.west, area.north, area.east].map((n) => n.toFixed(5)).join(",");
+  const query = `[out:json][timeout:25];way[highway](${box});out tags geom;`;
+
+  const res = await fetch(OVERPASS_URL, {
+    method: "POST",
+    body: new URLSearchParams({ data: query }),
+    signal: signal ?? null,
+  });
+  if (!res.ok) throw new Error(`Overpass returned ${res.status}`);
+  const { elements } = (await res.json()) as { elements: OverpassWay[] };
+
+  return elements.flatMap((way) =>
+    way.type === "way" && way.geometry && way.geometry.length >= 2
+      ? [{ surface: classifyWay(way.tags ?? {}), points: way.geometry.map((p): LatLng => [p.lat, p.lon]) }]
+      : []
+  );
+}

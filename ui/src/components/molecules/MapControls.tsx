@@ -1,6 +1,7 @@
 import { useId } from "react";
 import { Maximize2, Minimize2 } from "lucide-react";
-import { BASE_LAYERS, ROUTE_COLORS } from "../../utils/mapStyles";
+import ColorSwatches from "./ColorSwatches";
+import { BASE_LAYERS } from "../../utils/mapStyles";
 import type { BaseLayerId } from "../../utils/mapStyles";
 import type { LineMode } from "../../hooks/useMapPreferences";
 
@@ -26,9 +27,6 @@ export interface MapControlsProps {
   onToggleFullscreen?: (() => void) | undefined;
 }
 
-const SWATCH = "size-6 shrink-0 rounded-full border border-black/20 transition-shadow";
-const SELECTED = "ring-2 ring-ink ring-offset-2 ring-offset-chalk";
-
 // The strip above the route map: background, line colour/style and fullscreen.
 export default function MapControls({
   baseLayer,
@@ -45,7 +43,6 @@ export default function MapControls({
 }: MapControlsProps) {
   const selectId = useId();
   const lineModeId = useId();
-  const isPreset = ROUTE_COLORS.some((c) => c.value === routeColor.toLowerCase());
 
   return (
     <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-line bg-chalk px-3 py-2">
@@ -85,40 +82,7 @@ export default function MapControls({
         </select>
       </div>
 
-      {lineMode === "solid" && (
-        <div role="group" aria-label="Route colour" className="flex flex-wrap items-center gap-2">
-          {ROUTE_COLORS.map((c) => (
-            <button
-              key={c.value}
-              type="button"
-              title={c.label}
-              aria-label={c.label}
-              aria-pressed={routeColor.toLowerCase() === c.value}
-              onClick={() => onRouteColorChange(c.value)}
-              className={`${SWATCH} ${routeColor.toLowerCase() === c.value ? SELECTED : ""}`}
-              style={{ backgroundColor: c.value }}
-            />
-          ))}
-          {/* Any other colour: the native picker, drawn as one more swatch. */}
-          <label
-            title="Custom colour"
-            className={`${SWATCH} relative cursor-pointer overflow-hidden ${isPreset ? "" : SELECTED}`}
-            style={{
-              background: isPreset
-                ? "conic-gradient(#f44, #fd4, #4d4, #4dd, #44f, #d4d, #f44)"
-                : routeColor,
-            }}
-          >
-            <span className="sr-only">Custom colour</span>
-            <input
-              type="color"
-              value={routeColor}
-              onChange={(e) => onRouteColorChange(e.target.value)}
-              className="absolute inset-0 size-full cursor-pointer opacity-0"
-            />
-          </label>
-        </div>
-      )}
+      {lineMode === "solid" && <ColorSwatches value={routeColor} onChange={onRouteColorChange} />}
 
       <label
         className="flex cursor-pointer items-center gap-2 text-sm font-semibold"

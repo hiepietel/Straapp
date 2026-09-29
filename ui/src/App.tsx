@@ -4,6 +4,7 @@ import ActivityDetailPage from "./components/pages/ActivityDetailPage";
 import ProfilePage from "./components/pages/ProfilePage";
 import StatisticsPage from "./components/pages/StatisticsPage";
 import GearPage from "./components/pages/GearPage";
+import HeatmapPage from "./components/pages/HeatmapPage";
 import Header from "./components/organisms/Header";
 import { useAthlete } from "./hooks/useAthlete";
 import LoginPage from "./components/pages/LoginPage";
@@ -57,6 +58,7 @@ function Screens({ onLogout }: ScreensProps) {
       {route.name === "profile" && <ProfilePage />}
       {route.name === "statistics" && <StatisticsPage />}
       {route.name === "gear" && <GearPage />}
+      {route.name === "heatmap" && <HeatmapPage />}
     </>
   );
 }

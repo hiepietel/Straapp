@@ -1,6 +1,6 @@
 # Straapp
 
-Your Strava activities in your own database, with statistics and gear history.
+Your Strava activities in your own database, with statistics, gear history and a heatmap of everywhere you've been.
 
 | Folder | What |
 | --- | --- |
