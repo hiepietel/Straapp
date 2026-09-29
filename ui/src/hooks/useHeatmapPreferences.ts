@@ -2,6 +2,8 @@ import { useCallback, useState } from "react";
 import { DEFAULT_ROUTE_COLOR, isBaseLayerId, isBikeOverlayId, isHexColor } from "../utils/mapStyles";
 import type { BaseLayerId, BikeOverlayId } from "../utils/mapStyles";
 import type { SpotKind } from "../utils/heatmap";
+import { SQUADRAT_ZOOMS } from "../utils/squadrats";
+import type { SquadratZoom } from "../utils/squadrats";
 
 const STORAGE_KEY = "straapp.heatmap";
 
@@ -33,6 +35,8 @@ export interface HeatmapPreferences {
   spotMinCount: number;
   /** Metres: starts closer than this count as the same spot. */
   spotRadius: number;
+  /** Which map tiles to mark as visited (14 = squadrats, 17 = squadratinhos); null for none. */
+  squadratZoom: SquadratZoom | null;
 }
 
 const DEFAULTS: HeatmapPreferences = {
@@ -48,6 +52,7 @@ const DEFAULTS: HeatmapPreferences = {
   spotKind: "both",
   spotMinCount: 5,
   spotRadius: 200,
+  squadratZoom: null,
 };
 
 const oneOf = <T,>(values: readonly T[], value: unknown, fallback: T): T =>
@@ -70,6 +75,7 @@ function readStored(): HeatmapPreferences {
       spotKind: oneOf(SPOT_KINDS, r.spotKind, DEFAULTS.spotKind),
       spotMinCount: oneOf(SPOT_MIN_COUNTS, r.spotMinCount, DEFAULTS.spotMinCount),
       spotRadius: oneOf(SPOT_RADII, r.spotRadius, DEFAULTS.spotRadius),
+      squadratZoom: oneOf<SquadratZoom | null>([null, ...SQUADRAT_ZOOMS], r.squadratZoom, DEFAULTS.squadratZoom),
     };
   } catch {
     return DEFAULTS;

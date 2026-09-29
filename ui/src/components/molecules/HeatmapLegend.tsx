@@ -13,6 +13,8 @@ export interface HeatmapLegendProps {
   surfaceError: string | null;
   showSpots: boolean;
   spotColor: string;
+  /** Shown while visited map tiles are drawn. */
+  squadrats: { label: string; color: string; count: number; largest: number } | null;
 }
 
 const SURFACE_KEYS = [
@@ -21,8 +23,16 @@ const SURFACE_KEYS = [
 ] as const;
 
 // Floats over the map's bottom-left corner (Leaflet keeps its attribution bottom-right).
-export default function HeatmapLegend({ heat, groups, surfaceStatus, surfaceError, showSpots, spotColor }: HeatmapLegendProps) {
-  if (!heat && !groups?.length && surfaceStatus === "off" && !showSpots) return null;
+export default function HeatmapLegend({
+  heat,
+  groups,
+  surfaceStatus,
+  surfaceError,
+  showSpots,
+  spotColor,
+  squadrats,
+}: HeatmapLegendProps) {
+  if (!heat && !groups?.length && surfaceStatus === "off" && !showSpots && !squadrats) return null;
 
   return (
     <div className="pointer-events-none absolute bottom-2 left-2 z-[1000] flex max-w-[calc(100%-1rem)] flex-col gap-2 rounded-md border border-line bg-chalk/95 px-3 py-2 text-xs shadow-sm">
@@ -73,6 +83,29 @@ export default function HeatmapLegend({ heat, groups, surfaceStatus, surfaceErro
       {surfaceStatus === "loading" && <p className="text-mute">Loading road surfaces…</p>}
       {surfaceStatus === "error" && (
         <p className="text-alert">Couldn't load road surfaces{surfaceError ? `: ${surfaceError}` : "."}</p>
+      )}
+
+      {squadrats && (
+        <div>
+          <p className="flex items-center gap-1.5">
+            <span
+              className="inline-block size-3 border"
+              style={{ backgroundColor: `${squadrats.color}55`, borderColor: squadrats.color }}
+              aria-hidden="true"
+            />
+            <span>
+              <span className="num font-semibold">{squadrats.count.toLocaleString()}</span> {squadrats.label.toLowerCase()}
+            </span>
+          </p>
+          {squadrats.largest > 1 && (
+            <p className="mt-0.5 flex items-center gap-1.5">
+              <span className="inline-block size-3 border-2" style={{ borderColor: squadrats.color }} aria-hidden="true" />
+              <span>
+                Largest square <span className="num font-semibold">{squadrats.largest}×{squadrats.largest}</span>
+              </span>
+            </p>
+          )}
+        </div>
       )}
 
       {showSpots && (

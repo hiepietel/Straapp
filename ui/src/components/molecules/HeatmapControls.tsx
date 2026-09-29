@@ -7,6 +7,8 @@ import type { BaseLayerId, BikeOverlayId } from "../../utils/mapStyles";
 import { HEAT_COLOR_MODES, MAP_HEIGHTS, SPOT_MIN_COUNTS, SPOT_RADII } from "../../hooks/useHeatmapPreferences";
 import type { HeatColorMode, HeatmapPreferences } from "../../hooks/useHeatmapPreferences";
 import type { SpotKind } from "../../utils/heatmap";
+import { SQUADRAT_ZOOMS, squadratLabel } from "../../utils/squadrats";
+import type { SquadratZoom } from "../../utils/squadrats";
 
 const COLOR_MODE_LABELS: Record<HeatColorMode, string> = {
   heat: "Heat (how often)",
@@ -176,6 +178,25 @@ export default function HeatmapControls({ prefs, onChange, onFit, isFullscreen, 
             {BIKE_OVERLAYS[id].label}
           </label>
         ))}
+
+        <Labelled label="Squadrats">
+          {(id) => (
+            <select
+              id={id}
+              value={prefs.squadratZoom ?? ""}
+              onChange={(e) => onChange({ squadratZoom: e.target.value ? (Number(e.target.value) as SquadratZoom) : null })}
+              className={SELECT}
+              title="Map tiles your routes have been through, like squadrats.com. Lower zoom is bigger tiles."
+            >
+              <option value="">Off</option>
+              {SQUADRAT_ZOOMS.map((zoom) => (
+                <option key={zoom} value={zoom}>
+                  {squadratLabel(zoom)}
+                </option>
+              ))}
+            </select>
+          )}
+        </Labelled>
 
         <label className={CHECK_LABEL} title="Places where many of your activities start or finish">
           <input

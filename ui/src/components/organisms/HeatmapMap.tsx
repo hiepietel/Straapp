@@ -18,6 +18,7 @@ import {
 } from "../../utils/heatmap";
 import { BIKE_OVERLAYS, getBaseLayer } from "../../utils/mapStyles";
 import { fetchAreaSurfaces } from "../../utils/roadSurface";
+import { fromTile, largestSquare, tileOf, tileRing, toTile, visitedTiles } from "../../utils/squadrats";
 import type { AreaBounds, SurfaceWay } from "../../utils/roadSurface";
 import { SURFACE_DASH } from "../../utils/routeStyling";
 import { GROUPS } from "../../utils/sports";
@@ -56,6 +57,9 @@ const SPORT_COLORS: Record<SportGroupId, string> = {
   other: "#e87ba4",
 };
 const SPOT_COLOR = "#c2185b";
+const SQUADRAT_COLOR = "#6d28d9";
+/** The grid is drawn once its tiles are at least this many screen pixels wide. */
+const GRID_MIN_TILE_PX = 12;
 
 const canFullscreen = typeof document !== "undefined" && document.fullscreenEnabled;
 
@@ -135,6 +139,8 @@ export default function HeatmapMap({ routes, gear, fitKey }: HeatmapMapProps) {
     const map = L.map(containerRef.current, { center: [50, 10], zoom: 4 });
     mapRef.current = map;
     // Lines on canvases in their own panes, under markers: road surfaces go over the routes they describe.
+    // Visited tiles go under everything else drawn on the map.
+    map.createPane("squadrats").style.zIndex = "380";
     map.createPane("routes").style.zIndex = "390";
     map.createPane("surfaces").style.zIndex = "395";
     routeRendererRef.current = L.canvas({ pane: "routes" });
@@ -349,6 +355,77 @@ export default function HeatmapMap({ routes, gear, fitKey }: HeatmapMapProps) {
     };
   }, [surface, grid, prefs.showSurface, prefs.baseLayer, prefs.lineWidth]);
 
+  // Squadrats: every visited tile as one filled shape, the largest square outlined, and the grid.
+  const squadrats = useMemo(() => {
+    const zoom = prefs.squadratZoom;
+    if (zoom === null) return null;
+    const tiles = visitedTiles(points, zoom);
+    return { zoom, tiles, largest: largestSquare(tiles) };
+  }, [prefs.squadratZoom, points]);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !squadrats) return;
+    const renderer = L.canvas({ pane: "squadrats" });
+    const { zoom, tiles, largest } = squadrats;
+    const rings = [...tiles].map((key) => {
+      const [x, y] = tileOf(key);
+      return tileRing(x, y, zoom);
+    });
+    const layers: L.Layer[] = [
+      // Nested rings make one multi-polygon: a single layer however many tiles there are.
+      L.polygon(rings.map((r) => [r]) as unknown as L.LatLngTuple[][][], {
+        renderer,
+        pane: "squadrats",
+        stroke: false,
+        fillColor: SQUADRAT_COLOR,
+        fillOpacity: 0.28,
+        interactive: false,
+      }),
+    ];
+    if (largest && largest.size > 1) {
+      layers.push(
+        L.polygon(toLeaflet([tileRing(largest.x, largest.y, zoom, largest.size)]), {
+          renderer,
+          pane: "squadrats",
+          color: SQUADRAT_COLOR,
+          weight: 3,
+          fill: false,
+          interactive: false,
+        })
+      );
+    }
+    const group = L.layerGroup(layers).addTo(map);
+
+    // The grid, for the area in view, once tiles are big enough on screen to tell apart.
+    const grid = L.layerGroup().addTo(map);
+    const drawGrid = () => {
+      grid.clearLayers();
+      if (256 / 2 ** (zoom - map.getZoom()) < GRID_MIN_TILE_PX) return;
+      const view = map.getBounds();
+      const [x0, y0] = toTile(view.getNorth(), view.getWest(), zoom);
+      const [x1, y1] = toTile(view.getSouth(), view.getEast(), zoom);
+      const lines: LatLng[][] = [];
+      for (let x = Math.floor(x0); x <= Math.ceil(x1); x++) {
+        lines.push([fromTile(x, Math.floor(y0), zoom), fromTile(x, Math.ceil(y1), zoom)]);
+      }
+      for (let y = Math.floor(y0); y <= Math.ceil(y1); y++) {
+        lines.push([fromTile(Math.floor(x0), y, zoom), fromTile(Math.ceil(x1), y, zoom)]);
+      }
+      grid.addLayer(
+        L.polyline(toLeaflet(lines), { renderer, color: SQUADRAT_COLOR, weight: 1, opacity: 0.45, interactive: false })
+      );
+    };
+    drawGrid();
+    map.on("moveend", drawGrid);
+
+    return () => {
+      map.off("moveend", drawGrid);
+      group.remove();
+      grid.remove();
+      renderer.remove();
+    };
+  }, [squadrats]);
+
   // Frequent start and finish spots.
   const spots = useMemo(
     () =>
@@ -449,6 +526,14 @@ export default function HeatmapMap({ routes, gear, fitKey }: HeatmapMapProps) {
           surfaceError={surfaceError}
           showSpots={prefs.showSpots && spots.length > 0}
           spotColor={SPOT_COLOR}
+          squadrats={
+            squadrats && {
+              label: squadrats.zoom === 14 ? "Squadrats" : squadrats.zoom === 17 ? "Squadratinhos" : `Zoom ${squadrats.zoom} tiles`,
+              color: SQUADRAT_COLOR,
+              count: squadrats.tiles.size,
+              largest: squadrats.largest?.size ?? 0,
+            }
+          }
         />
       </div>
     </div>
