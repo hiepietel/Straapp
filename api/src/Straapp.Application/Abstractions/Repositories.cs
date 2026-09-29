@@ -56,6 +56,33 @@ public sealed record ActivityUsage(
 public sealed record DailyTotals(
     DateOnly Day, string? SportType, string? Type, int Count, double Distance, long MovingTime, double Elevation);
 
+public interface IWeatherRepository
+{
+    /// <summary>
+    /// Outdoor activities with a start point that started before <paramref name="startedBefore"/> and
+    /// have no weather stored yet; newest first.
+    /// </summary>
+    Task<IReadOnlyList<WeatherTarget>> GetPendingAsync(DateTimeOffset startedBefore, int take, CancellationToken ct = default);
+
+    /// <summary>One of the athlete's activities, eligible for weather or not; null if not stored (or not theirs).</summary>
+    Task<WeatherTarget?> GetTargetAsync(long athleteId, long activityId, CancellationToken ct = default);
+
+    /// <summary>The stored weather with its samples, oldest first; null if none yet.</summary>
+    Task<ActivityWeather?> GetAsync(long activityId, CancellationToken ct = default);
+
+    /// <summary>Stores the weather, replacing any earlier copy.</summary>
+    Task ReplaceAsync(ActivityWeather weather, CancellationToken ct = default);
+}
+
+/// <summary>An activity as far as its weather is concerned.</summary>
+/// <param name="UtcOffset">Seconds from UTC where the activity happened.</param>
+/// <param name="Eligible">
+/// Has a real start point: not manual, not on a trainer, not virtual (Zwift's coordinates are made up).
+/// </param>
+public sealed record WeatherTarget(
+    long ActivityId, DateTimeOffset StartDate, int ElapsedTime, double? UtcOffset,
+    double? Latitude, double? Longitude, bool Eligible);
+
 public interface IAthleteRepository
 {
     Task<Athlete?> GetAthleteAsync(long athleteId, CancellationToken ct = default);

@@ -5,6 +5,7 @@ using Straapp.Application.Heatmap;
 using Straapp.Application.Statistics;
 using Straapp.Application.StoredActivities;
 using Straapp.Application.Sync;
+using Straapp.Application.Weather;
 
 namespace Straapp.Application;
 
@@ -19,6 +20,8 @@ public static class DependencyInjection
         services.AddScoped<GearService>();
         services.AddScoped<ActivityService>();
         services.AddScoped<HeatmapService>();
+        services.AddScoped<WeatherService>();
+        services.AddScoped<WeatherSyncService>();
 
         services.AddSingleton<SyncStatus>();
         services.AddScoped<ActivitySyncService>();

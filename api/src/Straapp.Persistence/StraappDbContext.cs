@@ -16,6 +16,8 @@ public sealed class StraappDbContext(DbContextOptions<StraappDbContext> options)
     public DbSet<ActivityZone> ActivityZones => Set<ActivityZone>();
     public DbSet<ActivityComment> ActivityComments => Set<ActivityComment>();
     public DbSet<ActivityKudo> ActivityKudos => Set<ActivityKudo>();
+    public DbSet<ActivityWeather> ActivityWeather => Set<ActivityWeather>();
+    public DbSet<WeatherSample> WeatherSamples => Set<WeatherSample>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder) =>
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(StraappDbContext).Assembly);

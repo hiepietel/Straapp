@@ -18,6 +18,7 @@ public static class DependencyInjection
 
         services.AddScoped<IActivityRepository, ActivityRepository>();
         services.AddScoped<IAthleteRepository, AthleteRepository>();
+        services.AddScoped<IWeatherRepository, WeatherRepository>();
         return services;
     }
 

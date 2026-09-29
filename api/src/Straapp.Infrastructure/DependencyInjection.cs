@@ -3,7 +3,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Straapp.Application.Strava;
+using Straapp.Application.Weather;
 using Straapp.Infrastructure.Strava;
+using Straapp.Infrastructure.Weather;
 
 namespace Straapp.Infrastructure;
 
@@ -34,6 +36,14 @@ public static class DependencyInjection
             // Outermost first: the rate limiter may wait and retry, and each try gets a fresh token.
             .AddHttpMessageHandler<StravaRateLimitHandler>()
             .AddHttpMessageHandler<StravaAuthHandler>();
+
+        services.AddOptions<WeatherOptions>().Bind(configuration.GetSection(WeatherOptions.SectionName));
+        services.AddHttpClient<IWeatherClient, OpenMeteoClient>((sp, http) =>
+        {
+            http.BaseAddress = sp.GetRequiredService<IOptions<WeatherOptions>>().Value.ArchiveUrl;
+            http.Timeout = TimeSpan.FromSeconds(30);
+            http.DefaultRequestHeaders.UserAgent.ParseAdd("Straapp/1.0 (personal training log)");
+        });
 
         return services;
     }

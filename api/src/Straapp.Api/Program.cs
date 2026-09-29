@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Straapp.Api;
 using Straapp.Api.Controllers;
 using Straapp.Api.Sync;
+using Straapp.Api.Weather;
 using Straapp.Application;
 using Straapp.Infrastructure;
 using Straapp.Persistence;
@@ -20,6 +21,7 @@ builder.Services.AddTokenLogin(builder.Configuration);
 builder.Services.AddSingleton<SyncQueue>();
 builder.Services.AddHostedService<SyncWorker>();
 builder.Services.AddHostedService<ScheduledSyncWorker>();
+builder.Services.AddHostedService<WeatherWorker>();
 
 builder.Services.AddControllers()
     .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase)));
