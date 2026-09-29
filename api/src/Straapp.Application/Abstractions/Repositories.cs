@@ -31,7 +31,19 @@ public interface IActivityRepository
 
     /// <summary>Every stored activity of the athlete, just the columns gear statistics need; oldest first.</summary>
     Task<IReadOnlyList<ActivityUsage>> GetUsageAsync(long athleteId, CancellationToken ct = default);
+
+    /// <summary>
+    /// The athlete's activities that have a route, on local days in [<paramref name="from"/>, <paramref name="to"/>)
+    /// (either side open when null); oldest first.
+    /// </summary>
+    Task<IReadOnlyList<ActivityRoute>> GetRoutesAsync(long athleteId, DateOnly? from, DateOnly? to, CancellationToken ct = default);
 }
+
+/// <summary>One activity's simplified route, with just enough to filter and label it.</summary>
+/// <param name="Date">The local calendar day it started on.</param>
+/// <param name="Polyline">Strava's Google-encoded summary polyline.</param>
+public sealed record ActivityRoute(
+    long Id, string Name, string? SportType, string? Type, DateOnly Date, double Distance, string? GearId, string Polyline);
 
 /// <summary>One activity, reduced to what usage statistics need.</summary>
 /// <param name="Date">The local calendar day it started on.</param>

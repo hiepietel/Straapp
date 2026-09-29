@@ -50,7 +50,7 @@ public sealed class GearService(IActivityRepository activities, IAthleteReposito
     }
 
     /// <summary>The bikes and shoes in the athlete's stored Strava profile: name, distance and primary flag only.</summary>
-    private static IEnumerable<Gear> ProfileGear(Athlete? athlete)
+    internal static IEnumerable<Gear> ProfileGear(Athlete? athlete)
     {
         if (athlete is null) return [];
         DetailedAthlete? profile;

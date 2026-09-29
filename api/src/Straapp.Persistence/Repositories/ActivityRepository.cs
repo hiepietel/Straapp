@@ -103,6 +103,32 @@ internal sealed class ActivityRepository(StraappDbContext db) : IActivityReposit
             .ToList();
     }
 
+    public async Task<IReadOnlyList<ActivityRoute>> GetRoutesAsync(
+        long athleteId, DateOnly? from, DateOnly? to, CancellationToken ct = default)
+    {
+        var query = db.Activities.Where(a => a.AthleteId == athleteId && a.SummaryPolyline != null && a.SummaryPolyline != "");
+        if (from is { } f)
+        {
+            var start = f.ToDateTime(TimeOnly.MinValue);
+            query = query.Where(a => a.StartDateLocal >= start);
+        }
+        if (to is { } t)
+        {
+            var end = t.ToDateTime(TimeOnly.MinValue);
+            query = query.Where(a => a.StartDateLocal < end);
+        }
+
+        var rows = await query
+            .OrderBy(a => a.StartDateLocal)
+            .Select(a => new { a.Id, a.Name, a.SportType, a.Type, a.StartDateLocal, a.Distance, a.GearId, a.SummaryPolyline })
+            .ToListAsync(ct);
+
+        return rows
+            .Select(r => new ActivityRoute(
+                r.Id, r.Name, r.SportType, r.Type, DateOnly.FromDateTime(r.StartDateLocal), r.Distance, r.GearId, r.SummaryPolyline!))
+            .ToList();
+    }
+
     public async Task ReplaceAsync(Activity activity, CancellationToken ct = default)
     {
         try
