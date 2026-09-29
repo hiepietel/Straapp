@@ -54,18 +54,18 @@ public sealed record WeekTotals(int Week, DateOnly Start, Totals? Current, IRead
 /// <param name="ToDate">1 January up to today's date in that year, for comparing a year in progress fairly.</param>
 public sealed record YearTotals(int Year, Totals Total, Totals ToDate);
 
-/// <param name="Sport">Null means all sports.</param>
+/// <param name="SportTypes">The Strava sport types counted; empty means all of them.</param>
 /// <param name="CompareYears">The years the months and weeks are compared with, newest first.</param>
-/// <param name="Sports">The sports with any stored activity, for the filter.</param>
+/// <param name="AvailableSportTypes">The sport types with any stored activity, for the filter.</param>
 /// <param name="AvailableYears">Years with any stored activity, newest first, plus the current year.</param>
 /// <param name="ToDate">This week, month and year so far; always relative to <paramref name="Today"/>.</param>
 /// <param name="Years">Every year from the first stored activity to now, oldest first.</param>
 public sealed record StatisticsReport(
     int Year,
     IReadOnlyList<int> CompareYears,
-    SportGroup? Sport,
+    IReadOnlyList<string> SportTypes,
     DateOnly Today,
-    IReadOnlyList<SportGroup> Sports,
+    IReadOnlyList<string> AvailableSportTypes,
     IReadOnlyList<int> AvailableYears,
     IReadOnlyList<PeriodComparison> ToDate,
     IReadOnlyList<MonthTotals> Months,

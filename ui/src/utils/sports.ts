@@ -18,6 +18,7 @@ export const GROUPS = {
 /** `"run" | "ride" | "walk" | "swim" | "other"` — derived, so it never drifts. */
 export type SportGroupId = keyof typeof GROUPS;
 
+// Kept in step with the API's SportGroups.
 const TYPE_TO_GROUP: Partial<Record<SportType, SportGroupId>> = {
   Run: "run",
   TrailRun: "run",
@@ -26,14 +27,46 @@ const TYPE_TO_GROUP: Partial<Record<SportType, SportGroupId>> = {
   GravelRide: "ride",
   MountainBikeRide: "ride",
   EBikeRide: "ride",
+  EMountainBikeRide: "ride",
   VirtualRide: "ride",
+  Velomobile: "ride",
+  Handcycle: "ride",
   Walk: "walk",
   Hike: "walk",
   Swim: "swim",
 };
 
-export const getGroup = (activity: Activity): SportGroupId =>
-  TYPE_TO_GROUP[activity.sport_type ?? activity.type ?? ""] ?? "other";
+/** The group a Strava sport type belongs to. */
+export const groupOfType = (sportType: string): SportGroupId => TYPE_TO_GROUP[sportType] ?? "other";
+
+/** The activity's Strava sport type, falling back to the legacy type. */
+export const sportTypeOf = (activity: Activity): string => activity.sport_type ?? activity.type ?? "Other";
+
+export const getGroup = (activity: Activity): SportGroupId => groupOfType(sportTypeOf(activity));
+
+// Short names for the sub-type filter; anything else is spelled out from its Strava name.
+const SHORT_TYPE_LABELS: Record<string, string> = {
+  Ride: "Ride",
+  GravelRide: "Gravel",
+  MountainBikeRide: "MTB",
+  EBikeRide: "E-bike",
+  EMountainBikeRide: "E-MTB",
+  VirtualRide: "Virtual ride",
+  VirtualRun: "Virtual run",
+  TrailRun: "Trail run",
+};
+
+/** "MountainBikeRide" -> "MTB"; "WeightTraining" -> "Weight training". */
+export function sportTypeLabel(sportType: string): string {
+  const short = SHORT_TYPE_LABELS[sportType];
+  if (short) return short;
+  const spaced = sportType.replace(/([a-z])([A-Z])/g, "$1 $2");
+  return spaced.charAt(0) + spaced.slice(1).toLowerCase();
+}
+
+/** Whether a sport type passes a filter of chosen types (an empty filter lets everything through). */
+export const matchesSportTypes = (sportType: string, chosen: ReadonlySet<string>): boolean =>
+  chosen.size === 0 || chosen.has(sportType);
 
 // "TrailRun" -> "Trail run"
 export function sportLabel(activity: Activity): string {

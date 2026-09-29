@@ -15,18 +15,19 @@ public sealed class StatisticsService(IActivityRepository activities)
     private static readonly DateOnly HistoryStart = new(2009, 1, 1);
 
     public async Task<StatisticsReport> GetReportAsync(
-        long athleteId, int year, IReadOnlyList<int> compareYears, SportGroup? sport, DateOnly today, CancellationToken ct = default)
+        long athleteId, int year, IReadOnlyList<int> compareYears, IReadOnlyCollection<string> sportTypes, DateOnly today,
+        CancellationToken ct = default)
     {
         // The whole history is only one row per day and sport type, so take all of it: any year can
         // then be compared with any other without working out which days each comparison needs.
         var to = Max(IsoWeekStart(year + 1, 1), today.AddDays(1));
         var days = await activities.GetDailyTotalsAsync(athleteId, HistoryStart, to, ct);
 
-        var sports = days.Select(d => SportGroups.Of(d.SportType, d.Type)).Distinct().Order().ToList();
+        var presentTypes = days.Select(d => SportGroups.TypeOf(d.SportType, d.Type)).Distinct().Order().ToList();
         var availableYears = days.Select(d => d.Day.Year).Append(today.Year).Distinct().OrderDescending().ToList();
 
         var totalsByDay = days
-            .Where(d => sport is null || SportGroups.Of(d.SportType, d.Type) == sport)
+            .Where(d => sportTypes.Count == 0 || sportTypes.Contains(SportGroups.TypeOf(d.SportType, d.Type)))
             .GroupBy(d => d.Day)
             .ToDictionary(g => g.Key, g => g.Aggregate(Totals.Zero, (sum, d) => sum + new Totals(d.Count, d.Distance, d.MovingTime, d.Elevation)));
 
@@ -36,7 +37,7 @@ public sealed class StatisticsService(IActivityRepository activities)
             .Aggregate(Totals.Zero, (sum, kv) => sum + kv.Value);
 
         return new StatisticsReport(
-            year, compareYears, sport, today, sports, availableYears,
+            year, compareYears, sportTypes.Order().ToList(), today, presentTypes, availableYears,
             ToDate(today, Between),
             Months(year, compareYears, today, Between),
             Weeks(year, compareYears, today, Between),

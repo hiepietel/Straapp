@@ -21,11 +21,17 @@ public static class SportGroups
         ["GravelRide"] = SportGroup.Ride,
         ["MountainBikeRide"] = SportGroup.Ride,
         ["EBikeRide"] = SportGroup.Ride,
+        ["EMountainBikeRide"] = SportGroup.Ride,
         ["VirtualRide"] = SportGroup.Ride,
+        ["Velomobile"] = SportGroup.Ride,
+        ["Handcycle"] = SportGroup.Ride,
         ["Walk"] = SportGroup.Walk,
         ["Hike"] = SportGroup.Walk,
         ["Swim"] = SportGroup.Swim,
     };
+
+    /// <summary>The activity's sport type, or its legacy type for older activities without one.</summary>
+    public static string TypeOf(string? sportType, string? type) => sportType ?? type ?? "Other";
 
     /// <summary>Uses the legacy type when an older activity has no sport type.</summary>
     public static SportGroup Of(string? sportType, string? type) =>

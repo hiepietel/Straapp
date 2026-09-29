@@ -3,16 +3,14 @@ import StatItem from "../molecules/StatItem";
 import Spinner from "../atoms/Spinner";
 import Notice from "../molecules/Notice";
 import DateRangeFilter, { DEFAULT_DATE_RANGE, rangeBounds, rangeLabel } from "../molecules/DateRangeFilter";
-import SportMultiSelect from "../molecules/SportMultiSelect";
+import SportTypeFilter from "../molecules/SportTypeFilter";
 import { aggregateTotals, speedStat } from "../../utils/activityStats";
 import type { Stat } from "../../utils/activityStats";
 import { formatDistance, formatDuration, formatElevation, formatSpeed } from "../../utils/format";
-import { GROUPS, getGroup } from "../../utils/sports";
+import { GROUPS, groupOfType, matchesSportTypes, sportTypeOf } from "../../utils/sports";
 import type { SportGroupId } from "../../utils/sports";
 import type { ActivitiesStatus } from "../../hooks/useActivities";
 import type { Activity } from "../../types/strava";
-
-const GROUP_IDS = Object.keys(GROUPS) as SportGroupId[];
 
 // A hard stop so a very wide range (or a lot of history) can't auto-trigger unbounded
 // fetching. 1500 activities is generous — tens of pages — for what a stats view needs.
@@ -28,13 +26,10 @@ export interface SummaryStripProps {
 
 export default function SummaryStrip({ activities, status, hasMore, onLoadMore }: SummaryStripProps) {
   const [dateRange, setDateRange] = useState(DEFAULT_DATE_RANGE);
-  const [sportFilter, setSportFilter] = useState<ReadonlySet<SportGroupId>>(new Set());
+  const [sportFilter, setSportFilter] = useState<ReadonlySet<string>>(new Set());
 
   // Only offer type filters for sports that exist in the data.
-  const sportOptions = useMemo(() => {
-    const present = new Set<SportGroupId>(activities.map(getGroup));
-    return GROUP_IDS.filter((id) => present.has(id)).map((id) => ({ id, label: GROUPS[id].label }));
-  }, [activities]);
+  const presentTypes = useMemo(() => [...new Set(activities.map(sportTypeOf))], [activities]);
 
   const { since } = rangeBounds(dateRange);
 
@@ -64,14 +59,15 @@ export default function SummaryStrip({ activities, status, hasMore, onLoadMore }
     return activities.filter((a) => {
       const t = new Date(a.start_date_local).getTime();
       if (t < since || t > until) return false;
-      return sportFilter.size === 0 || sportFilter.has(getGroup(a));
+      return matchesSportTypes(sportTypeOf(a), sportFilter);
     });
   }, [activities, dateRange, since, sportFilter]);
 
   const totals = useMemo(() => aggregateTotals(filtered), [filtered]);
 
-  // With one type selected, pace/speed can be shown the way that sport reports it.
-  const singleGroup = sportFilter.size === 1 ? [...sportFilter][0] : null;
+  // With types of one sport selected, pace/speed can be shown the way that sport reports it.
+  const chosenGroups = new Set([...sportFilter].map(groupOfType));
+  const singleGroup = chosenGroups.size === 1 ? [...chosenGroups][0]! : null;
 
   const secondaryStats = useMemo<Stat[]>(() => {
     const stats: Stat[] = [
@@ -103,8 +99,8 @@ export default function SummaryStrip({ activities, status, hasMore, onLoadMore }
 
       <div className="mb-5 flex flex-col gap-3">
         <DateRangeFilter value={dateRange} onChange={setDateRange} />
-        {sportOptions.length > 1 && (
-          <SportMultiSelect options={sportOptions} value={sportFilter} onChange={setSportFilter} />
+        {presentTypes.length > 1 && (
+          <SportTypeFilter types={presentTypes} value={sportFilter} onChange={setSportFilter} />
         )}
       </div>
 

@@ -5,14 +5,13 @@ import type { MapRoute } from "../organisms/HeatmapMap";
 import FilterTabs from "../molecules/FilterTabs";
 import type { FilterOption } from "../molecules/FilterTabs";
 import PillMultiSelect from "../molecules/PillMultiSelect";
+import SportTypeFilter from "../molecules/SportTypeFilter";
 import Notice from "../molecules/Notice";
 import Spinner from "../atoms/Spinner";
 import { useHeatmap } from "../../hooks/useHeatmap";
 import { isDemo } from "../../services/auth";
 import { decodePolyline } from "../../utils/polyline";
 import { formatDistance } from "../../utils/format";
-import { GROUPS } from "../../utils/sports";
-import type { SportGroupId } from "../../utils/sports";
 
 type PeriodId = "30d" | "3m" | "12m" | "year" | "lastYear" | "all" | "custom";
 
@@ -25,8 +24,6 @@ const PERIODS: FilterOption<PeriodId>[] = [
   { id: "all", label: "All time" },
   { id: "custom", label: "Custom" },
 ];
-
-const GROUP_IDS = Object.keys(GROUPS) as SportGroupId[];
 
 /** The browser's local calendar day, "YYYY-MM-DD", `days`/`months` from today. */
 function localDay(offset: { days?: number; months?: number } = {}): string {
@@ -59,7 +56,7 @@ function periodDays(period: PeriodId, custom: { from: string; to: string }): { f
 export default function HeatmapPage() {
   const [period, setPeriod] = useState<PeriodId>("12m");
   const [custom, setCustom] = useState({ from: "", to: "" });
-  const [sports, setSports] = useState<ReadonlySet<SportGroupId>>(new Set());
+  const [sportTypes, setSportTypes] = useState<ReadonlySet<string>>(new Set());
   const [gearIds, setGearIds] = useState<ReadonlySet<string>>(new Set());
 
   const { from, to } = periodDays(period, custom);
@@ -74,10 +71,7 @@ export default function HeatmapPage() {
     [report]
   );
 
-  const sportOptions = useMemo(() => {
-    const present = new Set(decoded.map((r) => r.sport));
-    return GROUP_IDS.filter((id) => present.has(id)).map((id) => ({ id, label: GROUPS[id].label }));
-  }, [decoded]);
+  const presentTypes = useMemo(() => [...new Set(decoded.map((r) => r.sportType))], [decoded]);
   const gearOptions = useMemo(
     () => (report?.gear ?? []).map((g) => ({ id: g.id, label: g.retired ? `${g.name} (retired)` : g.name })),
     [report]
@@ -85,12 +79,14 @@ export default function HeatmapPage() {
 
   // A choice that isn't in this date range (e.g. a bike you didn't ride then) is ignored, not applied.
   const visible = useMemo(() => {
-    const sportFilter = new Set([...sports].filter((s) => sportOptions.some((o) => o.id === s)));
+    const sportFilter = new Set([...sportTypes].filter((t) => presentTypes.includes(t)));
     const gearFilter = new Set([...gearIds].filter((g) => gearOptions.some((o) => o.id === g)));
     return decoded.filter(
-      (r) => (sportFilter.size === 0 || sportFilter.has(r.sport)) && (gearFilter.size === 0 || (r.gearId !== null && gearFilter.has(r.gearId)))
+      (r) =>
+        (sportFilter.size === 0 || sportFilter.has(r.sportType)) &&
+        (gearFilter.size === 0 || (r.gearId !== null && gearFilter.has(r.gearId)))
     );
-  }, [decoded, sports, gearIds, sportOptions, gearOptions]);
+  }, [decoded, sportTypes, gearIds, presentTypes, gearOptions]);
 
   const distance = visible.reduce((sum, r) => sum + r.distance, 0);
 
@@ -140,8 +136,8 @@ export default function HeatmapPage() {
               </div>
             )}
           </div>
-          {sportOptions.length > 1 && (
-            <PillMultiSelect options={sportOptions} value={sports} onChange={setSports} label="Filter by sport" />
+          {presentTypes.length > 1 && (
+            <SportTypeFilter types={presentTypes} value={sportTypes} onChange={setSportTypes} />
           )}
           {gearOptions.length > 0 && (
             <PillMultiSelect options={gearOptions} value={gearIds} onChange={setGearIds} label="Filter by gear" />

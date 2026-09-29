@@ -10,7 +10,7 @@ export type StatisticsStatus = "loading" | "ready" | "error";
  * The statistics report for a year and sport. When either changes, the previous report stays
  * on screen until the new one arrives, so the page doesn't flash a spinner on every click.
  */
-export function useStatistics({ year, compareYears, sport, today }: StatisticsQuery): {
+export function useStatistics({ year, compareYears, sportTypes, today }: StatisticsQuery): {
   report: StatisticsReport | null;
   status: StatisticsStatus;
   /** A newer report is on its way while `report` is still the old one. */
@@ -25,13 +25,19 @@ export function useStatistics({ year, compareYears, sport, today }: StatisticsQu
   const [attempt, setAttempt] = useState(0);
   // A new array arrives on every render: fetch again only when the years themselves change.
   const comparedKey = compareYears.join(",");
+  const typesKey = [...sportTypes].sort().join(",");
 
   useEffect(() => {
     let cancelled = false;
     setRefreshing(true);
     setError(null);
 
-    fetchStatistics({ year, compareYears: comparedKey ? comparedKey.split(",").map(Number) : [], sport, today })
+    fetchStatistics({
+      year,
+      compareYears: comparedKey ? comparedKey.split(",").map(Number) : [],
+      sportTypes: typesKey ? typesKey.split(",") : [],
+      today,
+    })
       .then((next) => {
         if (cancelled) return;
         setReport(next);
@@ -49,7 +55,7 @@ export function useStatistics({ year, compareYears, sport, today }: StatisticsQu
     return () => {
       cancelled = true;
     };
-  }, [year, comparedKey, sport, today, attempt]);
+  }, [year, comparedKey, typesKey, today, attempt]);
 
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
 

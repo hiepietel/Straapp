@@ -7,19 +7,16 @@ import type { CumulativeSeries } from "../organisms/CumulativeLineChart";
 import CollapsibleSection from "../molecules/CollapsibleSection";
 import DeltaBadge from "../molecules/DeltaBadge";
 import FilterTabs from "../molecules/FilterTabs";
+import SportTypeFilter from "../molecules/SportTypeFilter";
 import Notice from "../molecules/Notice";
 import Spinner from "../atoms/Spinner";
 import Button from "../atoms/Button";
 import { useStatistics } from "../../hooks/useStatistics";
 import { isDemo } from "../../services/auth";
-import { GROUPS } from "../../utils/sports";
-import type { SportGroupId } from "../../utils/sports";
 import { METRIC_LABELS, formatMetric, formatMetricTick, localNow, metricValue } from "../../utils/periodStats";
 import type { Metric } from "../../utils/periodStats";
 import type { PeriodComparison, Totals } from "../../types/statistics";
 import type { FilterOption } from "../molecules/FilterTabs";
-
-type SportFilter = "all" | SportGroupId;
 
 const METRIC_OPTIONS: FilterOption<Metric>[] = (Object.keys(METRIC_LABELS) as Metric[]).map((id) => ({
   id,
@@ -83,7 +80,7 @@ export default function StatisticsPage() {
   const thisYear = now.getUTCFullYear();
   const todayLabel = dayMonth.format(parseDay(today));
 
-  const [sport, setSport] = useState<SportFilter>("all");
+  const [sportTypes, setSportTypes] = useState<ReadonlySet<string>>(new Set());
   const [metric, setMetric] = useState<Metric>("distance");
   const [year, setYear] = useState(thisYear);
   // Null until the viewer picks: then "the year before", whichever year is chosen.
@@ -97,21 +94,15 @@ export default function StatisticsPage() {
   const { report, status, error, retry } = useStatistics({
     year,
     compareYears,
-    sport: sport === "all" ? undefined : sport,
+    sportTypes: [...sportTypes],
     today,
   });
 
-  const sportOptions = useMemo<FilterOption<SportFilter>[]>(() => {
-    const present = new Set(report?.sports ?? []);
-    // Keep the chosen sport even if the other year has none of it, so the filter doesn't vanish.
-    if (sport !== "all") present.add(sport);
-    return [
-      { id: "all", label: "All sports" },
-      ...(Object.keys(GROUPS) as SportGroupId[])
-        .filter((id) => present.has(id))
-        .map((id) => ({ id, label: GROUPS[id].label })),
-    ];
-  }, [report, sport]);
+  // Keep the chosen types even when the data has none of them, so the filter doesn't vanish.
+  const sportTypeOptions = useMemo(
+    () => [...new Set([...(report?.availableSportTypes ?? []), ...sportTypes])],
+    [report, sportTypes]
+  );
 
   const years = report?.availableYears ?? [thisYear];
   // The year before is always offered, then every earlier year with data.
@@ -250,7 +241,7 @@ export default function StatisticsPage() {
       filters={
         ready && (
           <div className="flex flex-col gap-3">
-            <FilterTabs options={sportOptions} value={sport} onChange={setSport} />
+            <SportTypeFilter types={sportTypeOptions} value={sportTypes} onChange={setSportTypes} />
             <div className="flex flex-wrap items-center justify-between gap-3">
               <FilterTabs options={METRIC_OPTIONS} value={metric} onChange={setMetric} label="Measure" />
               <div className="flex flex-wrap items-center gap-3">

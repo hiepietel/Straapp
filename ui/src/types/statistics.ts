@@ -3,8 +3,6 @@
  * Dates are local calendar days ("2026-09-28"); every range's end is exclusive.
  */
 
-import type { SportGroupId } from "../utils/sports";
-
 /** Every measure at once, so switching between them needs no new request. */
 export interface Totals {
   count: number;
@@ -63,11 +61,11 @@ export interface StatisticsReport {
   year: number;
   /** The years months and weeks are compared with, newest first. */
   compareYears: number[];
-  /** Null means all sports. */
-  sport: SportGroupId | null;
+  /** The Strava sport types counted; empty means all of them. */
+  sportTypes: string[];
   today: string;
-  /** Sports with any stored activity, for the filter. */
-  sports: SportGroupId[];
+  /** Sport types with any stored activity, for the filter. */
+  availableSportTypes: string[];
   /** Years with any stored activity, newest first, plus the current year. */
   availableYears: number[];
   /** This week, month and year so far. */
