@@ -6,12 +6,15 @@ interface ProblemDetails {
   detail?: string;
 }
 
-export type QueryParams = Record<string, string | number | undefined>;
+/** An array is sent as the same key repeated (`?year=2025&year=2024`), which ASP.NET reads as a list. */
+export type QueryParams = Record<string, string | number | readonly (string | number)[] | undefined>;
 
 /** GET from the Straapp API (Vite proxies /api in dev), with the login token. */
 export async function apiGet<T>(path: string, params: QueryParams = {}): Promise<T> {
   const query = new URLSearchParams(
-    Object.entries(params).flatMap(([key, value]) => (value === undefined ? [] : [[key, String(value)]]))
+    Object.entries(params).flatMap(([key, value]) =>
+      value === undefined ? [] : (Array.isArray(value) ? value : [value]).map((v) => [key, String(v)])
+    )
   ).toString();
 
   const token = getAccessToken();

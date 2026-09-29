@@ -3,10 +3,25 @@ import { niceTicks } from "../../utils/chartTicks";
 import { useElementWidth } from "../../hooks/useElementWidth";
 import DeltaBadge from "../molecules/DeltaBadge";
 
-// The period being looked at is the one colour; the period it's compared with is a quiet
-// grey behind it, so the eye goes to "now" and reads "before" as context.
+// The period being looked at is the one colour; a single period it's compared with is a quiet
+// grey behind it, so the eye goes to "now" and reads "before" as context. Several compared
+// periods each need a hue of their own to be told apart.
 export const CURRENT_COLOR = "#2a78d6";
 export const PREVIOUS_COLOR = "#aab4b9";
+// The dataviz reference categorical palette without its blue (that's "now"), in validated order.
+const COMPARED_PALETTE = ["#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#4a3aa7", "#008300", "#e34948"];
+const OVERFLOW_COLOR = "#8a949a";
+
+/** Colours for `count` compared periods, newest first: grey for one, distinct hues for more. */
+export const comparedColors = (count: number): string[] =>
+  count === 1 ? [PREVIOUS_COLOR] : Array.from({ length: count }, (_, i) => COMPARED_PALETTE[i] ?? OVERFLOW_COLOR);
+
+export interface ComparedSeries {
+  name: string;
+  color: string;
+  /** `null` where the period has no counterpart (e.g. week 53). */
+  values: readonly (number | null)[];
+}
 
 const PAD_LEFT = 56;
 const PAD_RIGHT = 8;
@@ -28,12 +43,15 @@ export interface CompareBarChartProps {
   titles: readonly string[];
   /** `null` for periods that haven't happened yet. */
   current: readonly (number | null)[];
-  previous: readonly (number | null)[];
   currentName: string;
-  previousName: string;
+  /** What each period is compared with, in legend order. */
+  compared: readonly ComparedSeries[];
   format: (v: number) => string;
   formatTick: (v: number) => string;
-  /** "grouped": bars side by side (few periods). "overlay": the previous one behind (many). */
+  /**
+   * "grouped": bars side by side (few periods). "overlay": the compared one behind (many periods);
+   * with more than one compared series, grouped is used anyway, since overlaid bars would hide each other.
+   */
   layout?: "grouped" | "overlay";
   /** Show every nth axis label, for crowded axes. */
   labelEvery?: number;
@@ -46,9 +64,8 @@ export default function CompareBarChart({
   labels,
   titles,
   current,
-  previous,
   currentName,
-  previousName,
+  compared,
   format,
   formatTick,
   layout = "grouped",
@@ -65,10 +82,13 @@ export default function CompareBarChart({
   const baseline = PAD_TOP + plotH;
 
   const { ticks, yMax } = useMemo(() => {
-    const max = Math.max(1, ...current.map((v) => v ?? 0), ...previous.map((v) => v ?? 0));
+    const max = Math.max(1, ...current.map((v) => v ?? 0), ...compared.flatMap((s) => s.values.map((v) => v ?? 0)));
     const ticks = niceTicks(0, max, 4);
     return { ticks, yMax: Math.max(max, ticks[ticks.length - 1] ?? max) };
-  }, [current, previous]);
+  }, [current, compared]);
+  const grouped = layout === "grouped" || compared.length > 1;
+  // Oldest on the left, the current period rightmost.
+  const olderFirst = useMemo(() => [...compared].reverse(), [compared]);
 
   const y = (v: number) => baseline - (v / yMax) * plotH;
   const colW = n > 0 ? plotW / n : 0;
@@ -77,7 +97,7 @@ export default function CompareBarChart({
 
   const tooltipX = hovered !== null ? PAD_LEFT + (hovered + 0.5) * colW : 0;
   const cur = hovered !== null ? current[hovered] : null;
-  const prev = hovered !== null ? previous[hovered] : null;
+  const onlyCompared = compared.length === 1 && hovered !== null ? compared[0]!.values[hovered] : null;
 
   return (
     <div>
@@ -86,10 +106,12 @@ export default function CompareBarChart({
           <span className="size-3 rounded-sm" style={{ backgroundColor: CURRENT_COLOR }} aria-hidden="true" />
           {currentName}
         </li>
-        <li className="flex items-center gap-2 text-mute">
-          <span className="size-3 rounded-sm" style={{ backgroundColor: PREVIOUS_COLOR }} aria-hidden="true" />
-          {previousName}
-        </li>
+        {compared.map((s) => (
+          <li key={s.name} className="flex items-center gap-2 text-mute">
+            <span className="size-3 rounded-sm" style={{ backgroundColor: s.color }} aria-hidden="true" />
+            {s.name}
+          </li>
+        ))}
       </ul>
 
       <div ref={wrapRef} className="relative w-full" style={{ height }} onPointerLeave={() => setHovered(null)}>
@@ -117,23 +139,30 @@ export default function CompareBarChart({
             {labels.map((label, i) => {
               const x0 = PAD_LEFT + i * colW + gap / 2;
               const c = current[i];
-              const p = previous[i];
-              let prevBar: string;
+              let bars: { d: string; color: string }[];
               let curBar: string;
-              if (layout === "grouped") {
-                // A 2px surface gap between the pair keeps them reading as two bars.
-                const w = Math.max(1, (barArea - 2) / 2);
-                prevBar = p ? barPath(x0, y(p), w, baseline - y(p)) : "";
-                curBar = c ? barPath(x0 + w + 2, y(c), w, baseline - y(c)) : "";
+              if (grouped) {
+                // A small surface gap between neighbours keeps them reading as separate bars.
+                const slots = olderFirst.length + 1;
+                const sep = slots > 3 ? 1 : 2;
+                const w = Math.max(1, (barArea - sep * (slots - 1)) / slots);
+                bars = olderFirst.map((s, j) => {
+                  const v = s.values[i];
+                  return { d: v ? barPath(x0 + j * (w + sep), y(v), w, baseline - y(v)) : "", color: s.color };
+                });
+                curBar = c ? barPath(x0 + (slots - 1) * (w + sep), y(c), w, baseline - y(c)) : "";
               } else {
                 const inset = barArea * 0.22;
-                prevBar = p ? barPath(x0, y(p), barArea, baseline - y(p)) : "";
+                bars = olderFirst.map((s) => {
+                  const v = s.values[i];
+                  return { d: v ? barPath(x0, y(v), barArea, baseline - y(v)) : "", color: s.color };
+                });
                 curBar = c ? barPath(x0 + inset, y(c), Math.max(1, barArea - inset * 2), baseline - y(c)) : "";
               }
               const showLabel = i % labelEvery === 0;
               return (
                 <g key={i}>
-                  {prevBar && <path d={prevBar} fill={PREVIOUS_COLOR} />}
+                  {bars.map((b, j) => b.d && <path key={j} d={b.d} fill={b.color} />)}
                   {curBar && <path d={curBar} fill={CURRENT_COLOR} />}
                   {showLabel && (
                     <text
@@ -177,14 +206,27 @@ export default function CompareBarChart({
               <span className="text-mute">{currentName}</span>
               <span className="num ml-auto pl-3 font-bold">{cur === null || cur === undefined ? "—" : format(cur)}</span>
             </p>
-            <p className="flex items-center gap-2">
-              <span className="size-2.5 rounded-sm" style={{ backgroundColor: PREVIOUS_COLOR }} />
-              <span className="text-mute">{previousName}</span>
-              <span className="num ml-auto pl-3 font-bold">{prev === null || prev === undefined ? "—" : format(prev)}</span>
-            </p>
-            {cur !== null && cur !== undefined && prev !== null && prev !== undefined && (
+            {compared.map((s) => {
+              const v = s.values[hovered];
+              return (
+                <p key={s.name} className="flex items-center gap-2">
+                  <span className="size-2.5 rounded-sm" style={{ backgroundColor: s.color }} />
+                  <span className="text-mute">{s.name}</span>
+                  <span className="num ml-auto pl-3 font-bold">{v === null || v === undefined ? "—" : format(v)}</span>
+                  {/* How "now" differs from each one; with a single one, that's the line below. */}
+                  {compared.length > 1 && (
+                    <span className="w-16 text-right">
+                      {cur !== null && cur !== undefined && v !== null && v !== undefined && (
+                        <DeltaBadge current={cur} previous={v} />
+                      )}
+                    </span>
+                  )}
+                </p>
+              );
+            })}
+            {cur !== null && cur !== undefined && onlyCompared !== null && onlyCompared !== undefined && (
               <div className="mt-1 border-t border-line pt-1">
-                <DeltaBadge current={cur} previous={prev} />
+                <DeltaBadge current={cur} previous={onlyCompared} />
               </div>
             )}
           </div>

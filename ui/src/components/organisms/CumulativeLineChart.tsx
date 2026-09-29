@@ -14,6 +14,8 @@ export interface CumulativeSeries {
   color: string;
   /** [time ms, running total], oldest first. */
   points: readonly (readonly [number, number])[];
+  /** Where the line stops (ms), e.g. today for a year in progress; the window's end by default. */
+  until?: number;
 }
 
 export interface CumulativeLineChartProps {
@@ -24,6 +26,8 @@ export interface CumulativeLineChartProps {
   format: (v: number) => string;
   formatTick: (v: number) => string;
   formatDate: (t: number) => string;
+  /** Labelled lines across the time axis; years or quarters by default. */
+  xTicks?: readonly { t: number; label: string }[];
   height?: number;
 }
 
@@ -57,6 +61,7 @@ export default function CumulativeLineChart({
   format,
   formatTick,
   formatDate,
+  xTicks: customXTicks,
   height = 280,
 }: CumulativeLineChartProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -79,6 +84,7 @@ export default function CumulativeLineChart({
 
   // Few enough year lines to label; with a short window, mark quarters instead.
   const xTicks = useMemo(() => {
+    if (customXTicks) return customXTicks;
     const years = yearStarts(from, to);
     if (years.length >= 2) return years.map((t) => ({ t, label: String(new Date(t).getUTCFullYear()) }));
     const out: { t: number; label: string }[] = [];
@@ -92,17 +98,18 @@ export default function CumulativeLineChart({
       }
     }
     return out;
-  }, [from, to]);
+  }, [from, to, customXTicks]);
 
   const paths = useMemo(
     () =>
       series.map((s) => {
+        const end = Math.min(to, s.until ?? to);
         let d = `M${x(from).toFixed(1)} ${y(valueAt(s.points, from)).toFixed(1)}`;
         for (const [t, v] of s.points) {
-          if (t < from || t > to) continue;
+          if (t < from || t > end) continue;
           d += `H${x(t).toFixed(1)}V${y(v).toFixed(1)}`;
         }
-        d += `H${x(to).toFixed(1)}`;
+        d += `H${x(end).toFixed(1)}`;
         return { s, d };
       }),
     // x and y are recreated each render, but only from these values.
@@ -119,7 +126,11 @@ export default function CumulativeLineChart({
   const hoverX = hoverT !== null ? x(hoverT) : 0;
   const rows =
     hoverT !== null
-      ? series.map((s) => ({ s, v: valueAt(s.points, hoverT) })).filter((r) => r.v > 0).sort((a, b) => b.v - a.v)
+      ? series
+          .filter((s) => hoverT <= (s.until ?? to))
+          .map((s) => ({ s, v: valueAt(s.points, hoverT) }))
+          .filter((r) => r.v > 0)
+          .sort((a, b) => b.v - a.v)
       : [];
 
   return (

@@ -10,7 +10,7 @@ export type StatisticsStatus = "loading" | "ready" | "error";
  * The statistics report for a year and sport. When either changes, the previous report stays
  * on screen until the new one arrives, so the page doesn't flash a spinner on every click.
  */
-export function useStatistics({ year, compareYear, sport, today }: StatisticsQuery): {
+export function useStatistics({ year, compareYears, sport, today }: StatisticsQuery): {
   report: StatisticsReport | null;
   status: StatisticsStatus;
   /** A newer report is on its way while `report` is still the old one. */
@@ -23,13 +23,15 @@ export function useStatistics({ year, compareYear, sport, today }: StatisticsQue
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+  // A new array arrives on every render: fetch again only when the years themselves change.
+  const comparedKey = compareYears.join(",");
 
   useEffect(() => {
     let cancelled = false;
     setRefreshing(true);
     setError(null);
 
-    fetchStatistics({ year, compareYear, sport, today })
+    fetchStatistics({ year, compareYears: comparedKey ? comparedKey.split(",").map(Number) : [], sport, today })
       .then((next) => {
         if (cancelled) return;
         setReport(next);
@@ -47,7 +49,7 @@ export function useStatistics({ year, compareYear, sport, today }: StatisticsQue
     return () => {
       cancelled = true;
     };
-  }, [year, compareYear, sport, today, attempt]);
+  }, [year, comparedKey, sport, today, attempt]);
 
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
 

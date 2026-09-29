@@ -32,8 +32,8 @@ export interface MonthTotals {
   month: number;
   /** Null for months that haven't started yet. */
   current: Totals | null;
-  /** The same month of the year being compared with. */
-  compared: Totals;
+  /** The same month of each year being compared with, in `compareYears` order. */
+  compared: Totals[];
   /** The month before; for January, December of the year before. */
   previousMonth: Totals;
 }
@@ -45,8 +45,8 @@ export interface WeekTotals {
   start: string;
   /** Null for weeks that haven't started yet. */
   current: Totals | null;
-  /** The same week number in the year being compared with; null when it has none (week 53). */
-  compared: Totals | null;
+  /** The same week number in each year being compared with, in `compareYears` order; null when it has none (week 53). */
+  compared: (Totals | null)[];
   /** For week 1, the last week of the year before. */
   previousWeek: Totals;
 }
@@ -61,8 +61,8 @@ export interface YearTotals {
 
 export interface StatisticsReport {
   year: number;
-  /** The year months and weeks are compared with. */
-  compareYear: number;
+  /** The years months and weeks are compared with, newest first. */
+  compareYears: number[];
   /** Null means all sports. */
   sport: SportGroupId | null;
   today: string;
