@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Straapp.Application.Accounts;
 using Straapp.Application.GearStats;
 using Straapp.Application.Heatmap;
+using Straapp.Application.Insights;
 using Straapp.Application.Statistics;
 using Straapp.Application.StoredActivities;
 using Straapp.Application.Sync;
@@ -20,6 +21,7 @@ public static class DependencyInjection
         services.AddScoped<GearService>();
         services.AddScoped<ActivityService>();
         services.AddScoped<HeatmapService>();
+        services.AddScoped<InsightsService>();
         services.AddScoped<WeatherService>();
         services.AddScoped<WeatherSyncService>();
 

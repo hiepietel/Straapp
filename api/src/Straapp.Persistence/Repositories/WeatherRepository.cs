@@ -49,6 +49,16 @@ internal sealed class WeatherRepository(StraappDbContext db) : IWeatherRepositor
             .Include(w => w.Samples.OrderBy(h => h.Time))
             .FirstOrDefaultAsync(w => w.ActivityId == activityId, ct);
 
+    public async Task<IReadOnlyList<ActivityWeatherSample>> GetSamplesAsync(long athleteId, CancellationToken ct = default) =>
+        await (
+            from s in db.WeatherSamples
+            join a in db.Activities on s.ActivityId equals a.Id
+            where a.AthleteId == athleteId
+            select new ActivityWeatherSample(
+                s.ActivityId, a.StartDate, a.ElapsedTime, s.Time,
+                s.Temperature, s.ApparentTemperature, s.Precipitation, s.WindSpeed, s.WindGusts, s.WeatherCode))
+            .ToListAsync(ct);
+
     public async Task ReplaceAsync(ActivityWeather weather, CancellationToken ct = default)
     {
         try

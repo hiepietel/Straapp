@@ -1,7 +1,6 @@
 using Straapp.Application.Abstractions;
 using Straapp.Application.GearStats;
 using Straapp.Domain.Activities;
-using Straapp.Domain.Athletes;
 
 namespace Straapp.Application.Heatmap;
 
@@ -28,38 +27,16 @@ public sealed class HeatmapService(IActivityRepository activities, IAthleteRepos
     }
 
     /// <summary>The gear these routes used, most used first, named the same way as on the gear page.</summary>
-    private async Task<IReadOnlyList<HeatmapGear>> GearAsync(long athleteId, List<HeatmapRoute> routes, CancellationToken ct)
-    {
-        var used = routes
-            .Where(r => r.GearId is not null)
-            .GroupBy(r => r.GearId!)
-            .OrderByDescending(g => g.Count())
-            .ToList();
-        if (used.Count == 0) return [];
-
-        var known = (await athletes.GetGearAsync(athleteId, ct)).ToDictionary(g => g.Id);
-        foreach (var gear in GearService.ProfileGear(await athletes.GetAthleteAsync(athleteId, ct)))
-        {
-            known.TryAdd(gear.Id, gear);
-        }
-
-        return used
-            .Select(g =>
-            {
-                var gear = known.GetValueOrDefault(g.Key);
-                return new HeatmapGear(
-                    g.Key,
-                    string.IsNullOrWhiteSpace(gear?.Name) ? $"Gear {g.Key}" : gear.Name.Trim(),
-                    gear?.Kind ?? (g.Key.StartsWith('b') ? GearKind.Bike : GearKind.Shoes),
-                    gear?.Retired ?? false);
-            })
-            .ToList();
-    }
+    private Task<IReadOnlyList<GearLabel>> GearAsync(long athleteId, List<HeatmapRoute> routes, CancellationToken ct) =>
+        GearNames.LabelAsync(
+            athletes, athleteId,
+            routes.Where(r => r.GearId is not null).GroupBy(r => r.GearId!).OrderByDescending(g => g.Count()).Select(g => g.Key).ToList(),
+            ct);
 
     private static string? NullIfEmpty(string? value) => string.IsNullOrEmpty(value) ? null : value;
 }
 
-public sealed record HeatmapReport(IReadOnlyList<HeatmapRoute> Routes, IReadOnlyList<HeatmapGear> Gear);
+public sealed record HeatmapReport(IReadOnlyList<HeatmapRoute> Routes, IReadOnlyList<GearLabel> Gear);
 
 /// <param name="SportType">Strava's sport type, e.g. "GravelRide".</param>
 /// <param name="Date">The local calendar day it started on.</param>
@@ -68,4 +45,3 @@ public sealed record HeatmapReport(IReadOnlyList<HeatmapRoute> Routes, IReadOnly
 public sealed record HeatmapRoute(
     long Id, string Name, string SportType, SportGroup Sport, DateOnly Date, double Distance, string? GearId, string Polyline);
 
-public sealed record HeatmapGear(string Id, string Name, GearKind Kind, bool Retired);

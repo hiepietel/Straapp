@@ -37,7 +37,17 @@ public interface IActivityRepository
     /// (either side open when null); oldest first.
     /// </summary>
     Task<IReadOnlyList<ActivityRoute>> GetRoutesAsync(long athleteId, DateOnly? from, DateOnly? to, CancellationToken ct = default);
+
+    /// <summary>Every stored activity of the athlete, just the figures the general statistics need; oldest first.</summary>
+    Task<IReadOnlyList<ActivityFacts>> GetFactsAsync(long athleteId, CancellationToken ct = default);
 }
+
+/// <summary>One activity's headline figures.</summary>
+/// <param name="StartLocal">Wall-clock time where it happened.</param>
+public sealed record ActivityFacts(
+    long Id, string Name, string? SportType, string? Type, DateTime StartLocal, DateTimeOffset StartDate,
+    double Distance, int MovingTime, int ElapsedTime, double Elevation, double AverageSpeed, double? MaxSpeed,
+    double? AverageHeartrate, string? GearId, bool Commute, bool Trainer, bool Private);
 
 /// <summary>One activity's simplified route, with just enough to filter and label it.</summary>
 /// <param name="Date">The local calendar day it started on.</param>
@@ -72,7 +82,16 @@ public interface IWeatherRepository
 
     /// <summary>Stores the weather, replacing any earlier copy.</summary>
     Task ReplaceAsync(ActivityWeather weather, CancellationToken ct = default);
+
+    /// <summary>Every stored weather sample of the athlete's activities, with the activity's time window.</summary>
+    Task<IReadOnlyList<ActivityWeatherSample>> GetSamplesAsync(long athleteId, CancellationToken ct = default);
 }
+
+/// <summary>A weather sample next to the activity it belongs to.</summary>
+public sealed record ActivityWeatherSample(
+    long ActivityId, DateTimeOffset StartDate, int ElapsedTime, DateTimeOffset Time,
+    double? Temperature, double? ApparentTemperature, double? Precipitation, double? WindSpeed, double? WindGusts,
+    int? WeatherCode);
 
 /// <summary>An activity as far as its weather is concerned.</summary>
 /// <param name="UtcOffset">Seconds from UTC where the activity happened.</param>
