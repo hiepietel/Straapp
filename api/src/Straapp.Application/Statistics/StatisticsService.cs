@@ -15,7 +15,7 @@ public sealed class StatisticsService(IActivityRepository activities)
     private static readonly DateOnly HistoryStart = new(2009, 1, 1);
 
     public async Task<StatisticsReport> GetReportAsync(
-        long athleteId, int year, int compareYear, SportGroup? sport, DateOnly today, CancellationToken ct = default)
+        long athleteId, int year, IReadOnlyList<int> compareYears, SportGroup? sport, DateOnly today, CancellationToken ct = default)
     {
         // The whole history is only one row per day and sport type, so take all of it: any year can
         // then be compared with any other without working out which days each comparison needs.
@@ -36,10 +36,10 @@ public sealed class StatisticsService(IActivityRepository activities)
             .Aggregate(Totals.Zero, (sum, kv) => sum + kv.Value);
 
         return new StatisticsReport(
-            year, compareYear, sport, today, sports, availableYears,
+            year, compareYears, sport, today, sports, availableYears,
             ToDate(today, Between),
-            Months(year, compareYear, today, Between),
-            Weeks(year, compareYear, today, Between),
+            Months(year, compareYears, today, Between),
+            Weeks(year, compareYears, today, Between),
             Years(availableYears.Min(), today, Between));
     }
 
@@ -73,7 +73,7 @@ public sealed class StatisticsService(IActivityRepository activities)
         ];
     }
 
-    private static List<MonthTotals> Months(int year, int compareYear, DateOnly today, Func<DateOnly, DateOnly, Totals> between)
+    private static List<MonthTotals> Months(int year, IReadOnlyList<int> compareYears, DateOnly today, Func<DateOnly, DateOnly, Totals> between)
     {
         var monthsSoFar = year == today.Year ? today.Month : 12;
 
@@ -85,18 +85,17 @@ public sealed class StatisticsService(IActivityRepository activities)
             return new MonthTotals(
                 m,
                 m <= monthsSoFar ? Month(start) : null,
-                Month(new DateOnly(compareYear, m, 1)),
+                compareYears.Select(y => Month(new DateOnly(y, m, 1))).ToList(),
                 Month(start.AddMonths(-1)));
         }).ToList();
     }
 
-    private static List<WeekTotals> Weeks(int year, int compareYear, DateOnly today, Func<DateOnly, DateOnly, Totals> between)
+    private static List<WeekTotals> Weeks(int year, IReadOnlyList<int> compareYears, DateOnly today, Func<DateOnly, DateOnly, Totals> between)
     {
         var todayWeekYear = ISOWeek.GetYear(today.ToDateTime(TimeOnly.MinValue));
         var todayWeek = ISOWeek.GetWeekOfYear(today.ToDateTime(TimeOnly.MinValue));
         var count = ISOWeek.GetWeeksInYear(year);
         var lastStarted = todayWeekYear == year ? todayWeek : count;
-        var weeksInCompareYear = ISOWeek.GetWeeksInYear(compareYear);
 
         Totals Week(DateOnly start) => between(start, start.AddDays(7));
 
@@ -107,7 +106,7 @@ public sealed class StatisticsService(IActivityRepository activities)
                 w,
                 start,
                 w <= lastStarted ? Week(start) : null,
-                w <= weeksInCompareYear ? Week(IsoWeekStart(compareYear, w)) : null,
+                compareYears.Select(y => w <= ISOWeek.GetWeeksInYear(y) ? Week(IsoWeekStart(y, w)) : null).ToList(),
                 Week(start.AddDays(-7)));
         }).ToList();
     }

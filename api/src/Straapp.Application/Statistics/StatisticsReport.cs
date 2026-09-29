@@ -36,15 +36,18 @@ public sealed record PeriodComparison(
 
 /// <summary>A calendar month of the chosen year.</summary>
 /// <param name="Current">Null for months that haven't started yet.</param>
-/// <param name="Compared">The same month of the year being compared with.</param>
+/// <param name="Compared">The same month of each year being compared with, in the report's <c>CompareYears</c> order.</param>
 /// <param name="PreviousMonth">The month before; for January, December of the year before.</param>
-public sealed record MonthTotals(int Month, Totals? Current, Totals Compared, Totals PreviousMonth);
+public sealed record MonthTotals(int Month, Totals? Current, IReadOnlyList<Totals> Compared, Totals PreviousMonth);
 
 /// <summary>An ISO week (Monday start) of the chosen year.</summary>
 /// <param name="Current">Null for weeks that haven't started yet.</param>
-/// <param name="Compared">The week with the same number in the year being compared with; null if it has none (week 53).</param>
+/// <param name="Compared">
+/// The week with the same number in each year being compared with, in the report's <c>CompareYears</c> order;
+/// null for a year that has no such week (week 53).
+/// </param>
 /// <param name="PreviousWeek">The week before; for week 1, the last week of the year before.</param>
-public sealed record WeekTotals(int Week, DateOnly Start, Totals? Current, Totals? Compared, Totals PreviousWeek);
+public sealed record WeekTotals(int Week, DateOnly Start, Totals? Current, IReadOnlyList<Totals?> Compared, Totals PreviousWeek);
 
 /// <summary>One calendar year.</summary>
 /// <param name="Total">The whole year (so far, for the current one).</param>
@@ -52,14 +55,14 @@ public sealed record WeekTotals(int Week, DateOnly Start, Totals? Current, Total
 public sealed record YearTotals(int Year, Totals Total, Totals ToDate);
 
 /// <param name="Sport">Null means all sports.</param>
-/// <param name="CompareYear">The year the months and weeks are compared with.</param>
+/// <param name="CompareYears">The years the months and weeks are compared with, newest first.</param>
 /// <param name="Sports">The sports with any stored activity, for the filter.</param>
 /// <param name="AvailableYears">Years with any stored activity, newest first, plus the current year.</param>
 /// <param name="ToDate">This week, month and year so far; always relative to <paramref name="Today"/>.</param>
 /// <param name="Years">Every year from the first stored activity to now, oldest first.</param>
 public sealed record StatisticsReport(
     int Year,
-    int CompareYear,
+    IReadOnlyList<int> CompareYears,
     SportGroup? Sport,
     DateOnly Today,
     IReadOnlyList<SportGroup> Sports,
