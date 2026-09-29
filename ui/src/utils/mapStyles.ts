@@ -1,6 +1,6 @@
 const OSM_ATTRIBUTION =
   '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors';
-const CARTO_ATTRIBUTION = `${OSM_ATTRIBUTION} &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer">CARTO</a>`;
+const ESRI_CANVAS_ATTRIBUTION = "Tiles &copy; Esri &mdash; Esri, HERE, Garmin, &copy; OpenStreetMap contributors, and the GIS User Community";
 
 export interface BaseLayer {
   id: string;
@@ -8,6 +8,8 @@ export interface BaseLayer {
   url: string;
   attribution: string;
   maxZoom: number;
+  /** The deepest zoom the server has tiles for; closer in, Leaflet enlarges those. */
+  maxNativeZoom?: number;
   subdomains?: string;
 }
 
@@ -38,18 +40,11 @@ export const BASE_LAYERS = [
   {
     id: "light",
     label: "Light",
-    url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-    attribution: CARTO_ATTRIBUTION,
-    maxZoom: 20,
-    subdomains: "abcd",
-  },
-  {
-    id: "dark",
-    label: "Dark",
-    url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-    attribution: CARTO_ATTRIBUTION,
-    maxZoom: 20,
-    subdomains: "abcd",
+    // CARTO's light map now needs an API key (it draws a watermark without one); Esri's doesn't.
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+    attribution: ESRI_CANVAS_ATTRIBUTION,
+    maxZoom: 19,
+    maxNativeZoom: 16,
   },
 ] as const satisfies readonly BaseLayer[];
 

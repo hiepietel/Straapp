@@ -123,8 +123,13 @@ export default function RouteMap({
     const map = mapRef.current;
     if (!map) return;
 
-    const { url, attribution, maxZoom, subdomains } = getBaseLayer(prefs.baseLayer);
-    const tiles = L.tileLayer(url, { attribution, maxZoom, ...(subdomains && { subdomains }) }).addTo(map);
+    const { url, attribution, maxZoom, maxNativeZoom, subdomains } = getBaseLayer(prefs.baseLayer);
+    const tiles = L.tileLayer(url, {
+      attribution,
+      maxZoom,
+      ...(maxNativeZoom && { maxNativeZoom }),
+      ...(subdomains && { subdomains }),
+    }).addTo(map);
     map.setMaxZoom(maxZoom);
 
     return () => {
