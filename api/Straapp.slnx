@@ -6,4 +6,7 @@
     <Project Path="src/Straapp.Infrastructure/Straapp.Infrastructure.csproj" />
     <Project Path="src/Straapp.Persistence/Straapp.Persistence.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Straapp.UnitTests/Straapp.UnitTests.csproj" />
+  </Folder>
 </Solution>

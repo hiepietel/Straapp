@@ -11,9 +11,13 @@ COPY src/Straapp.Application/Straapp.Application.csproj src/Straapp.Application/
 COPY src/Straapp.Infrastructure/Straapp.Infrastructure.csproj src/Straapp.Infrastructure/
 COPY src/Straapp.Persistence/Straapp.Persistence.csproj src/Straapp.Persistence/
 COPY src/Straapp.Api/Straapp.Api.csproj src/Straapp.Api/
-RUN dotnet restore src/Straapp.Api/Straapp.Api.csproj
+COPY tests/Straapp.UnitTests/Straapp.UnitTests.csproj tests/Straapp.UnitTests/
+RUN dotnet restore Straapp.slnx
 
 COPY src/ src/
+COPY tests/ tests/
+# A failing test stops the build, so a broken API never becomes an image (and deploy.sh stops here).
+RUN dotnet test tests/Straapp.UnitTests -c Release --no-restore
 RUN dotnet publish src/Straapp.Api/Straapp.Api.csproj -c Release -o /app --no-restore /p:UseAppHost=false
 
 # ---- run ----

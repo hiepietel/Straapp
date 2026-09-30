@@ -42,6 +42,12 @@ cd ui && npm run dev
 Log in on the web app. About a minute later the API starts syncing your whole history, newest first;
 follow it with `GET /api/sync/status` in Swagger.
 
+Unit tests (they also run in CI and in the API's Docker build, so a failing test stops a deploy):
+
+```bash
+cd api && dotnet test
+```
+
 Database changes:
 
 ```bash

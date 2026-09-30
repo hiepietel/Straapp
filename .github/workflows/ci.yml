@@ -1,4 +1,5 @@
-# Checks every change: the API and web app build, the web app typechecks, and both Docker images build.
+# Checks every change: the API builds and its unit tests pass, the web app builds and typechecks, and both
+# Docker images build (the API's image runs the unit tests too).
 # Nothing is deployed from GitHub: you deploy from your own machine with infra/deploy.sh.
 name: CI
 
@@ -19,6 +20,7 @@ jobs:
         with:
           dotnet-version: 10.0.x
       - run: dotnet build api/Straapp.slnx -c Release
+      - run: dotnet test api/Straapp.slnx -c Release --no-build
 
   ui:
     name: Web app
