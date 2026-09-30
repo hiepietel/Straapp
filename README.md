@@ -7,7 +7,7 @@ Your Strava activities in your own database, with statistics, gear history and a
 | [`api/`](api) | .NET 10 API (clean architecture): logs in with Strava, syncs activities into PostgreSQL, serves statistics |
 | [`ui/`](ui) | React + Vite web app |
 | [`infra/`](infra) | Kubernetes manifests and server scripts; see [infra/README.md](infra/README.md) |
-| [`.github/workflows/`](.github/workflows) | CI on every push, deploy to the server on every push to `main` |
+| [`.github/workflows/`](.github/workflows) | CI on every push (build and typecheck; deploying is done from your machine) |
 
 Strava is only ever called by the API's sync jobs. The pages read what's already in the database.
 
@@ -62,5 +62,7 @@ docker compose down         # stop (add -v to also delete the database)
 
 ## Run it on a server (production)
 
-Push to `main` on GitHub, and the Deploy workflow builds the images and rolls them out to your server
-over SSH. The one-time server and GitHub setup is in [infra/README.md](infra/README.md).
+From your machine, `./infra/deploy.sh root@<server>` builds the images, loads them into k3s on the
+server over SSH and applies the Kubernetes manifests. `./infra/import-db.sh root@<server>` copies your
+local database there, so the server doesn't have to fetch your whole history from Strava again. The
+one-time server setup is in [infra/README.md](infra/README.md).

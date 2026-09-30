@@ -2,9 +2,8 @@
 # Creates the secrets Straapp reads, straight in the cluster; they never go into git.
 #   straapp-postgres  database user and password (generated)
 #   straapp-api       Strava client id and secret (asked for), token signing key (generated)
-#   ghcr              optional: lets the cluster pull private images from GitHub
 #
-# Run on the server as the deploy user (or anyone with kubectl access):  ./create-secrets.sh
+# Run on the server as root, or anyone with kubectl access:  ./create-secrets.sh
 # Existing secrets are kept unless you pass --replace: changing the database password of a running
 # database locks the app out, so it is never replaced silently.
 set -euo pipefail
@@ -36,16 +35,6 @@ else
     --from-literal=strava-client-id="$client_id" \
     --from-literal=strava-client-secret="$client_secret" \
     --from-literal=auth-signing-key="$(openssl rand -base64 64 | tr -d '\n')"
-fi
-
-read -rp "Are the GitHub packages (images) private? Then the cluster needs a token to pull them. [y/N] " private
-if [[ "$private" =~ ^[Yy] ]]; then
-  echo "A GitHub personal access token (classic) with only the read:packages scope."
-  read -rp  "  GitHub user name: " gh_user
-  read -rsp "  Token: " gh_token; echo
-  kubectl -n "$NS" create secret docker-registry ghcr \
-    --docker-server=ghcr.io --docker-username="$gh_user" --docker-password="$gh_token" \
-    --dry-run=client -o yaml | kubectl apply -f -
 fi
 
 echo

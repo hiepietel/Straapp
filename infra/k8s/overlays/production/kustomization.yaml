@@ -1,5 +1,5 @@
-# Production: the base plus the real domain. The deploy workflow pins the images to the commit it
-# built (kustomize edit set image), renders this folder and applies it on the server.
+# Production: the base plus your domain. infra/deploy.sh builds the images, loads them into k3s,
+# sets newTag below to the commit it built, and applies this folder on the server.
 #
 # Before the first deploy, replace straapp.example.com below with your domain.
 apiVersion: kustomize.config.k8s.io/v1beta1
@@ -7,6 +7,12 @@ kind: Kustomization
 
 resources:
   - ../../base
+
+images:
+  - name: straapp-api
+    newTag: latest
+  - name: straapp-ui
+    newTag: latest
 
 patches:
   - target:

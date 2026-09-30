@@ -32,9 +32,6 @@ spec:
       labels:
         app.kubernetes.io/name: straapp-api
     spec:
-      # Only needed while the GitHub packages are private; see infra/README.md.
-      imagePullSecrets:
-        - name: ghcr
       securityContext:
         runAsNonRoot: true
         seccompProfile:
@@ -42,6 +39,8 @@ spec:
       containers:
         - name: api
           image: straapp-api
+          # infra/deploy.sh loads the image straight into k3s; there is no registry to pull from.
+          imagePullPolicy: Never
           ports:
             - name: http
               containerPort: 8080
