@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Straapp.Application.Accounts;
+using Straapp.Application.DeviceStats;
 using Straapp.Application.GearStats;
 using Straapp.Application.Heatmap;
 using Straapp.Application.Insights;
@@ -19,6 +20,7 @@ public static class DependencyInjection
         services.AddScoped<ProfileTotalsService>();
         services.AddScoped<StatisticsService>();
         services.AddScoped<GearService>();
+        services.AddScoped<DeviceService>();
         services.AddScoped<ActivityService>();
         services.AddScoped<HeatmapService>();
         services.AddScoped<InsightsService>();

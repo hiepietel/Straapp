@@ -59,7 +59,7 @@ public sealed record ActivityRoute(
 /// <param name="Date">The local calendar day it started on.</param>
 /// <param name="Private">Visible only to the athlete ("only me" on Strava).</param>
 public sealed record ActivityUsage(
-    long Id, string Name, string? GearId, string? SportType, string? Type, DateOnly Date,
+    long Id, string Name, string? DeviceName, string? GearId, string? SportType, string? Type, DateOnly Date,
     double Distance, int MovingTime, double Elevation, bool Private);
 
 /// <summary>One day's activities of one sport type, summed.</summary>

@@ -11,7 +11,7 @@ public class ProfileTotalsServiceTests
     private readonly FakeActivityRepository _activities = new();
 
     private void Add(long id, string date, double distance, string sportType = "Run", int movingTime = 600, double elevation = 0, bool isPrivate = false) =>
-        _activities.Usage.Add(new ActivityUsage(id, $"Activity {id}", null, sportType, null, DateOnly.Parse(date), distance, movingTime, elevation, isPrivate));
+        _activities.Usage.Add(new ActivityUsage(id, $"Activity {id}", null, null, sportType, null, DateOnly.Parse(date), distance, movingTime, elevation, isPrivate));
 
     private Task<ProfileTotals> TotalsAsync() => new ProfileTotalsService(_activities).GetAsync(1, Today);
 
