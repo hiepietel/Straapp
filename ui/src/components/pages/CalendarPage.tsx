@@ -147,10 +147,10 @@ export default function CalendarPage() {
       {status === "loading" && <div className="flex flex-col items-center gap-3 py-12"><Spinner label="Loading activity history" /></div>}
 
       {ready && (
-        <div className="space-y-8">
-          <section aria-label="Totals for this period" className="rounded-lg border border-line bg-chalk p-4">
+        <div className="space-y-5">
+          <section aria-label="Totals for this period" className="rounded-lg border border-line bg-chalk px-4 py-3">
             <p className="text-sm text-mute">{periodLabel(from, to, view)}</p>
-            <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
+            <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
               <StatItem label="Distance" value={formatDistance(overall.distance)} />
               <StatItem label="Moving time" value={formatDuration(overall.movingTime)} />
               <StatItem label="Elevation" value={formatElevation(overall.elevation)} />
@@ -159,7 +159,7 @@ export default function CalendarPage() {
           </section>
 
           {view === "year" ? (
-            <section aria-label="Activity calendar by month" className="grid grid-cols-1 gap-x-8 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
+            <section aria-label="Activity calendar by month" className="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-3 lg:grid-cols-4">
               {Array.from({ length: 12 }, (_, month) => (
                 <MiniMonth
                   key={month}
@@ -199,7 +199,7 @@ export default function CalendarPage() {
             </section>
           )}
 
-          <section aria-labelledby="selected-day-title" className="border-t border-line pt-6">
+          <section aria-labelledby="selected-day-title" className="border-t border-line pt-4">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h2 id="selected-day-title" className="text-xl font-bold">{fullDate(selectedDate)}</h2>
               {selected && <p className="text-sm text-mute">{formatMetric(metric, metricValue(selected.totals, metric))}</p>}
@@ -249,7 +249,7 @@ function MonthGrid({ year, month, dayByDate, selectedDate, metric, maxMetric, on
       <div className={`grid grid-cols-7 ${compact ? "gap-0.5" : "gap-px border-x border-b border-line bg-line"}`}>
         {Array.from({ length: cellCount }, (_, index) => {
           const dayNumber = index - offset + 1;
-          if (dayNumber < 1 || dayNumber > daysInMonth) return <div key={index} aria-hidden="true" className={compact ? "aspect-square" : "min-h-24 bg-pavement sm:min-h-32"} />;
+          if (dayNumber < 1 || dayNumber > daysInMonth) return <div key={index} aria-hidden="true" className={compact ? "h-7" : "min-h-16 bg-pavement sm:min-h-20"} />;
           const date = dateAt(Date.UTC(year, month, dayNumber));
           return <DayCell key={date} date={date} day={dayByDate.get(date)} metric={metric} maxMetric={maxMetric} selected={date === selectedDate} onSelect={onSelect} compact={compact} />;
         })}
@@ -281,15 +281,15 @@ function DayCell({ date, day, metric, maxMetric, selected, onSelect, compact }: 
       title={label}
       onClick={() => onSelect(date)}
       className={`relative flex w-full flex-col items-start border text-left transition-colors hover:border-ink ${
-        compact ? "aspect-square justify-center border-transparent p-0.5 text-[11px]" : "min-h-24 border-line p-2 sm:min-h-32 sm:p-3"
+        compact ? "h-7 justify-center border-transparent p-0.5 text-[11px] leading-none" : "min-h-16 border-line p-1.5 sm:min-h-20 sm:p-2"
       } ${selected ? "z-10 border-2 border-ink" : ""}`}
       style={dayStyle(amount, maxMetric)}
     >
-      <span className={`num font-semibold ${compact ? "mx-auto" : ""}`}>{dayNumber}</span>
+      <span className={`num font-semibold ${compact ? "mx-auto" : "text-sm leading-tight"}`}>{dayNumber}</span>
       {!compact && (
         <>
-          {day && <span className="mt-auto pt-3 text-xs font-semibold leading-tight sm:text-sm">{formatMetric(metric, amount)}</span>}
-          {day && <span className="mt-1 text-xs text-mute">{day.totals.count} {day.totals.count === 1 ? "activity" : "activities"}</span>}
+          {day && <span className="mt-auto pt-1 text-xs font-semibold leading-tight sm:text-sm">{formatMetric(metric, amount)}</span>}
+          {day && <span className="text-xs leading-tight text-mute">{day.totals.count} {day.totals.count === 1 ? "activity" : "activities"}</span>}
         </>
       )}
       {compact && day && <span className="mx-auto mt-0.5 size-1 rounded-full bg-ink" aria-hidden="true" />}
