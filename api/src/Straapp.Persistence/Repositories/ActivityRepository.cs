@@ -83,10 +83,22 @@ internal sealed class ActivityRepository(StraappDbContext db) : IActivityReposit
             .Where(s => s.ActivityId == activityId && db.Activities.Any(a => a.Id == activityId && a.AthleteId == athleteId))
             .FirstOrDefaultAsync(ct);
 
-    public async Task<IReadOnlyList<ActivityUsage>> GetUsageAsync(long athleteId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<ActivityUsage>> GetUsageAsync(
+        long athleteId, CancellationToken ct = default, DateOnly? from = null, DateOnly? to = null)
     {
-        var rows = await db.Activities
-            .Where(a => a.AthleteId == athleteId)
+        var query = db.Activities.Where(a => a.AthleteId == athleteId);
+        if (from is { } startDay)
+        {
+            var start = startDay.ToDateTime(TimeOnly.MinValue);
+            query = query.Where(a => a.StartDateLocal >= start);
+        }
+        if (to is { } endDay)
+        {
+            var end = endDay.ToDateTime(TimeOnly.MinValue);
+            query = query.Where(a => a.StartDateLocal < end);
+        }
+
+        var rows = await query
             .OrderBy(a => a.StartDateLocal)
             .Select(a => new
             {

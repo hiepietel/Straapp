@@ -1,8 +1,8 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { BarChart3, Bike, Cpu, Flame, ListChecks, LogOut, Menu, PieChart, UserRound, X } from "lucide-react";
+import { BarChart3, Bike, CalendarDays, Cpu, Flame, ListChecks, LogOut, Menu, PieChart, UserRound, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import Avatar from "../atoms/Avatar";
-import { DEVICES_HREF, GEAR_HREF, HEATMAP_HREF, INSIGHTS_HREF, LIST_HREF, PROFILE_HREF, STATISTICS_HREF } from "../../hooks/useRoute";
+import { CALENDAR_HREF, DEVICES_HREF, GEAR_HREF, HEATMAP_HREF, INSIGHTS_HREF, LIST_HREF, PROFILE_HREF, STATISTICS_HREF } from "../../hooks/useRoute";
 import type { Route } from "../../hooks/useRoute";
 import type { CurrentUser } from "../../services/auth";
 
@@ -24,6 +24,7 @@ interface NavLink {
 const LINKS: readonly NavLink[] = [
   { href: LIST_HREF, label: "Activities", icon: ListChecks, matches: ["list", "activity"] },
   { href: STATISTICS_HREF, label: "Statistics", icon: BarChart3, matches: ["statistics"] },
+  { href: CALENDAR_HREF, label: "Calendar", icon: CalendarDays, matches: ["calendar"] },
   { href: INSIGHTS_HREF, label: "General statistics", icon: PieChart, matches: ["insights"] },
   { href: HEATMAP_HREF, label: "Heatmap", icon: Flame, matches: ["heatmap"] },
   { href: GEAR_HREF, label: "Gear", icon: Bike, matches: ["gear"] },

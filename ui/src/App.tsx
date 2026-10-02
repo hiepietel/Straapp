@@ -5,6 +5,7 @@ import ProfilePage from "./components/pages/ProfilePage";
 import StatisticsPage from "./components/pages/StatisticsPage";
 import GearPage from "./components/pages/GearPage";
 import DevicesPage from "./components/pages/DevicesPage";
+import CalendarPage from "./components/pages/CalendarPage";
 import HeatmapPage from "./components/pages/HeatmapPage";
 import InsightsPage from "./components/pages/InsightsPage";
 import Header from "./components/organisms/Header";
@@ -61,6 +62,7 @@ function Screens({ onLogout }: ScreensProps) {
       {route.name === "statistics" && <StatisticsPage />}
       {route.name === "gear" && <GearPage />}
       {route.name === "devices" && <DevicesPage />}
+      {route.name === "calendar" && <CalendarPage />}
       {route.name === "heatmap" && <HeatmapPage />}
       {route.name === "insights" && <InsightsPage />}
     </>

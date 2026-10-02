@@ -29,8 +29,9 @@ public interface IActivityRepository
     /// <summary>The activity's sensor streams; null if it has none or isn't the athlete's.</summary>
     Task<ActivityStreams?> GetStreamsAsync(long athleteId, long activityId, CancellationToken ct = default);
 
-    /// <summary>Every stored activity of the athlete, just the columns gear statistics need; oldest first.</summary>
-    Task<IReadOnlyList<ActivityUsage>> GetUsageAsync(long athleteId, CancellationToken ct = default);
+    /// <summary>Stored activities with the columns needed for usage statistics; oldest first.</summary>
+    Task<IReadOnlyList<ActivityUsage>> GetUsageAsync(
+        long athleteId, CancellationToken ct = default, DateOnly? from = null, DateOnly? to = null);
 
     /// <summary>
     /// The athlete's activities that have a route, on local days in [<paramref name="from"/>, <paramref name="to"/>)

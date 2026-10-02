@@ -7,6 +7,7 @@ export type Route =
   | { name: "statistics" }
   | { name: "gear" }
   | { name: "devices" }
+  | { name: "calendar" }
   | { name: "heatmap" }
   | { name: "insights" };
 
@@ -17,6 +18,7 @@ export const PROFILE_HREF = "#/profile";
 export const STATISTICS_HREF = "#/statistics";
 export const GEAR_HREF = "#/gear";
 export const DEVICES_HREF = "#/devices";
+export const CALENDAR_HREF = "#/calendar";
 export const HEATMAP_HREF = "#/heatmap";
 export const INSIGHTS_HREF = "#/general-statistics";
 export const activityHref = (id: number): string => `#/activities/${id}`;
@@ -28,6 +30,7 @@ export function parseRoute(hash: string): Route {
   if (/^#\/statistics\/?$/.test(hash)) return { name: "statistics" };
   if (/^#\/gear\/?$/.test(hash)) return { name: "gear" };
   if (/^#\/devices\/?$/.test(hash)) return { name: "devices" };
+  if (/^#\/calendar\/?$/.test(hash)) return { name: "calendar" };
   if (/^#\/heatmap\/?$/.test(hash)) return { name: "heatmap" };
   if (/^#\/general-statistics\/?$/.test(hash)) return { name: "insights" };
   return { name: "list" };

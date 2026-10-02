@@ -45,8 +45,12 @@ internal sealed class FakeActivityRepository : IActivityRepository
     public Task<ActivityStreams?> GetStreamsAsync(long athleteId, long activityId, CancellationToken ct = default) =>
         throw new NotSupportedException();
 
-    public Task<IReadOnlyList<ActivityUsage>> GetUsageAsync(long athleteId, CancellationToken ct = default) =>
-        Task.FromResult<IReadOnlyList<ActivityUsage>>(Usage);
+    public Task<IReadOnlyList<ActivityUsage>> GetUsageAsync(
+        long athleteId, CancellationToken ct = default, DateOnly? from = null, DateOnly? to = null) =>
+        Task.FromResult<IReadOnlyList<ActivityUsage>>(Usage
+            .Where(a => from is null || a.Date >= from)
+            .Where(a => to is null || a.Date < to)
+            .ToList());
 
     public Task<IReadOnlyList<ActivityRoute>> GetRoutesAsync(long athleteId, DateOnly? from, DateOnly? to, CancellationToken ct = default)
     {
