@@ -24,6 +24,7 @@ GitHub only runs CI (build and typecheck); it never touches the server.
 | `import-db.sh` | Replaces the server's database with your local one |
 | `k8s/base/` | Every resource: PostgreSQL + nightly backup, API, web app, ingress |
 | `k8s/overlays/production/` | Your domain; `deploy.sh` sets the image tag here |
+| `k8s/overlays/lan/` | Home network: plain http on the server's IP, no domain (`STRAAPP_OVERLAY=lan`) |
 | `k8s/cluster/` | The Let's Encrypt issuer, applied once by `bootstrap.sh` |
 | `server/bootstrap.sh` | One-time server setup: k3s, cert-manager, the Let's Encrypt issuer |
 | `server/create-secrets.sh` | Creates the app's secrets in the cluster (never in git) |
@@ -82,6 +83,22 @@ until everything runs. The first run takes a few minutes; later ones reuse Docke
 If your local database already has your history, copy it over now (next section), so the server
 doesn't spend days fetching it from Strava. Then open `https://<your domain>` and log in with Strava.
 The first certificate can take a minute.
+
+## On your home network instead (no domain)
+
+To run Straapp on a server in your home network, e.g. `192.168.1.100`, reached only from inside it:
+
+- Skip the DNS and the open ports. `bootstrap.sh` still needs an email; it isn't used without a domain.
+- On the Strava API settings page, set **Authorization Callback Domain** to the server's IP, e.g. `192.168.1.100`.
+- Deploy the `lan` overlay, which serves plain http on any host name or IP, with no certificate:
+
+  ```bash
+  STRAAPP_OVERLAY=lan ./infra/deploy.sh root@192.168.1.100
+  ```
+
+- Open `http://192.168.1.100`. Traffic isn't encrypted, which is fine on a network you trust.
+
+Every later deploy needs `STRAAPP_OVERLAY=lan` too; without it, `deploy.sh` applies the production overlay.
 
 ## Moving your local database to the server
 

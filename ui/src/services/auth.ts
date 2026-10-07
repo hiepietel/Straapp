@@ -113,7 +113,9 @@ export async function signOut(): Promise<void> {
 
 /** Asks the API for Strava's "Authorize" link and sends the browser there. */
 export async function startLogin(): Promise<void> {
-  const state = crypto.randomUUID();
+  // Not crypto.randomUUID(): browsers only offer it on https or localhost, and the app may be served
+  // over plain http on a home network.
+  const state = Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, "0")).join("");
   try {
     sessionStorage.setItem(STATE_KEY, state);
     sessionStorage.setItem(RETURN_KEY, window.location.pathname + window.location.search + window.location.hash);

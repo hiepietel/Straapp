@@ -1,0 +1,27 @@
+# Home network: the base, served over plain http on any host name or IP, e.g. http://192.168.1.100.
+# No domain, so no Let's Encrypt certificate and no redirect to https. Deploy it with
+#   STRAAPP_OVERLAY=lan ./infra/deploy.sh root@192.168.1.100
+# deploy.sh sets newTag below to the commit it built.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+images:
+  - name: straapp-api
+    newTag: latest
+  - name: straapp-ui
+    newTag: latest
+
+patches:
+  - target:
+      kind: Ingress
+      name: straapp
+    patch: |-
+      - op: remove
+        path: /metadata/annotations
+      - op: remove
+        path: /spec/tls
+      - op: remove
+        path: /spec/rules/0/host
