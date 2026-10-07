@@ -25,6 +25,8 @@ GitHub only runs CI (build and typecheck); it never touches the server.
 | `k8s/base/` | Every resource: PostgreSQL + nightly backup, API, web app, ingress |
 | `k8s/overlays/production/` | Your domain; `deploy.sh` sets the image tag here |
 | `k8s/overlays/lan/` | Home network: plain http on the server's IP, no domain (`STRAAPP_OVERLAY=lan`) |
+| `k8s/overlays/minikube/` | Minikube instead of k3s: no ingress, web app on node port 30080 |
+| `server/minikube-expose.sh` | Minikube only: forwards the server's port 80 into minikube |
 | `k8s/cluster/` | The Let's Encrypt issuer, applied once by `bootstrap.sh` |
 | `server/bootstrap.sh` | One-time server setup: k3s, cert-manager, the Let's Encrypt issuer |
 | `server/create-secrets.sh` | Creates the app's secrets in the cluster (never in git) |
@@ -99,6 +101,32 @@ To run Straapp on a server in your home network, e.g. `192.168.1.100`, reached o
 - Open `http://192.168.1.100`. Traffic isn't encrypted, which is fine on a network you trust.
 
 Every later deploy needs `STRAAPP_OVERLAY=lan` too; without it, `deploy.sh` applies the production overlay.
+
+### With minikube instead of k3s
+
+If the server already runs minikube, use it instead of `bootstrap.sh`. Everything runs as the user that
+runs minikube (no root, no sudo), and the scripts notice minikube by themselves.
+
+```bash
+scp -r infra you@192.168.1.100:~/straapp-infra
+ssh you@192.168.1.100
+cd ~/straapp-infra/server && chmod +x *.sh
+minikube start                 # if it isn't running; it doesn't start by itself after a reboot
+./create-secrets.sh
+./minikube-expose.sh           # forwards the server's port 80 into minikube (asks for sudo once)
+exit
+```
+
+Then from your machine, with the `minikube` overlay. It has no ingress; the web app listens on port 30080
+of the minikube node, and `minikube-expose.sh` forwards port 80 there:
+
+```bash
+STRAAPP_OVERLAY=minikube ./infra/deploy.sh you@192.168.1.100
+PGPASSWORD=... ./infra/import-db.sh you@192.168.1.100
+```
+
+Open `http://192.168.1.100`. As with k3s, set Strava's callback domain to `192.168.1.100`. On the server,
+`kubectl` is `minikube kubectl --`, e.g. `minikube kubectl -- -n straapp get pods`.
 
 ## Moving your local database to the server
 

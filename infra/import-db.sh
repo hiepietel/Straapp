@@ -36,7 +36,8 @@ echo "==> Restoring on $SERVER"
 # The API is stopped meanwhile, and applies any newer migrations when it starts again.
 ssh "${SSH_OPTS[@]}" "$SERVER" '
   set -e
-  k() { $([ "$(id -u)" -eq 0 ] || echo sudo) k3s kubectl "$@"; }
+  if command -v k3s >/dev/null; then k() { $([ "$(id -u)" -eq 0 ] || echo sudo) k3s kubectl "$@"; }
+  else k() { minikube kubectl -- "$@"; }; fi
   k -n straapp scale deploy/straapp-api --replicas=0
   k -n straapp wait --for=delete pod -l app.kubernetes.io/name=straapp-api --timeout=2m || true
   k -n straapp exec statefulset/straapp-postgres -- sh -c \

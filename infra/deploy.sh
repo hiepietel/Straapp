@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 # Deploys Straapp from your machine: builds both images with Docker, streams them over SSH straight
-# into the server's k3s (no registry), then applies the Kubernetes manifests and waits for the rollout.
+# into the server's k3s or minikube (no registry), then applies the Kubernetes manifests and waits for
+# the rollout.
 #
 #   ./infra/deploy.sh root@your-server        # or: STRAAPP_SERVER=root@your-server ./infra/deploy.sh
-#   STRAAPP_OVERLAY=lan ./infra/deploy.sh root@192.168.1.100   # home network: plain http, no domain
+#   STRAAPP_OVERLAY=lan ./infra/deploy.sh root@192.168.1.100        # k3s on a home network: plain http
+#   STRAAPP_OVERLAY=minikube ./infra/deploy.sh you@192.168.1.100    # minikube (see infra/README.md)
 #
-# Needs Docker running locally, and SSH access to the server as root (or a user with passwordless sudo).
+# Needs Docker running locally, and SSH access to the server: for k3s as root (or a user with
+# passwordless sudo for k3s), for minikube as the user that runs minikube.
 # On Windows, run it from Git Bash.
 set -euo pipefail
 
@@ -32,13 +35,22 @@ echo "==> Building straapp-api:$TAG and straapp-ui:$TAG ($PLATFORM)"
 docker build --platform "$PLATFORM" -t "straapp-api:$TAG" api
 docker build --platform "$PLATFORM" -t "straapp-ui:$TAG" ui
 
-echo "==> Loading the images into k3s on $SERVER"
-docker save "straapp-api:$TAG" "straapp-ui:$TAG" | gzip | ssh "${SSH_OPTS[@]}" "$SERVER" 'gunzip | $([ "$(id -u)" -eq 0 ] || echo sudo) k3s ctr images import -'
+echo "==> Loading the images into the cluster on $SERVER"
+for image in "straapp-api:$TAG" "straapp-ui:$TAG"; do
+  docker save "$image" | gzip | ssh "${SSH_OPTS[@]}" "$SERVER" '
+    set -e
+    file=$(mktemp --suffix=.tar); trap "rm -f $file" EXIT
+    gunzip > "$file"
+    if command -v k3s >/dev/null; then $([ "$(id -u)" -eq 0 ] || echo sudo) k3s ctr images import "$file"
+    else minikube image load "$file"; fi
+  '
+done
 
 echo "==> Applying the manifests ($OVERLAY)"
 tar -C infra -cf - k8s | ssh "${SSH_OPTS[@]}" "$SERVER" "
   set -e
-  k() { \$([ \"\$(id -u)\" -eq 0 ] || echo sudo) k3s kubectl \"\$@\"; }
+  if command -v k3s >/dev/null; then k() { \$([ \"\$(id -u)\" -eq 0 ] || echo sudo) k3s kubectl \"\$@\"; }
+  else k() { minikube kubectl -- \"\$@\"; }; fi
   dir=\$(mktemp -d); trap 'rm -rf \"\$dir\"' EXIT
   tar -C \"\$dir\" -xf -
   sed -i 's/newTag: .*/newTag: $TAG/' \"\$dir/k8s/overlays/$OVERLAY/kustomization.yaml\"

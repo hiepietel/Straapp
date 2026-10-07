@@ -3,12 +3,15 @@
 #   straapp-postgres  database user and password (generated)
 #   straapp-api       Strava client id and secret (asked for), token signing key (generated)
 #
-# Run on the server as root, or anyone with kubectl access:  ./create-secrets.sh
+# Run on the server as root, or anyone with kubectl access (on minikube, the user that runs it):
+#   ./create-secrets.sh
 # Existing secrets are kept unless you pass --replace: changing the database password of a running
 # database locks the app out, so it is never replaced silently.
 set -euo pipefail
 
 NS=straapp
+# On minikube there may be no kubectl of its own; minikube brings one.
+command -v kubectl >/dev/null || kubectl() { minikube kubectl -- "$@"; }
 REPLACE="${1:-}"
 
 kubectl get namespace "$NS" &>/dev/null || kubectl create namespace "$NS"

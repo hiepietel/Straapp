@@ -1,0 +1,40 @@
+# Minikube on a home server: the base without the ingress (it is built for k3s' Traefik). The web app
+# listens on port 30080 of the minikube node instead; infra/server/minikube-expose.sh forwards the
+# server's port 80 there, so other machines open http://<server>. Deploy it with
+#   STRAAPP_OVERLAY=minikube ./infra/deploy.sh you@192.168.1.100
+# deploy.sh sets newTag below to the commit it built.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+images:
+  - name: straapp-api
+    newTag: latest
+  - name: straapp-ui
+    newTag: latest
+
+patches:
+  - patch: |-
+      $patch: delete
+      apiVersion: networking.k8s.io/v1
+      kind: Ingress
+      metadata:
+        name: straapp
+  - patch: |-
+      $patch: delete
+      apiVersion: traefik.io/v1alpha1
+      kind: Middleware
+      metadata:
+        name: redirect-https
+  - target:
+      kind: Service
+      name: straapp-ui
+    patch: |-
+      - op: add
+        path: /spec/type
+        value: NodePort
+      - op: add
+        path: /spec/ports/0/nodePort
+        value: 30080
